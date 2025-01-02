@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using TaskManagement.Auth.Models;
 
-namespace TaskManagement.Auth.Presentation.Controllers
+namespace TaskManagement.Auth.Controllers
 {
     public class HomeController : Controller
     {
