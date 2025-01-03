@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using TaskManagement.Auth.Data;
+using TaskManagement.Auth.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 

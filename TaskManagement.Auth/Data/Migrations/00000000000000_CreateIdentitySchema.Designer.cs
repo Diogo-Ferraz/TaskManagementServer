@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System;
-using TaskManagement.Auth.Data;
+using TaskManagement.Auth.Infrastructure.Persistence;
 
 namespace TaskManagement.Auth.Data.Migrations
 {
