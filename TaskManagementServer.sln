@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35222.181
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskManagement.Api", "TaskManagement.Api\TaskManagement.Api.csproj", "{A0D48BE9-A7D3-4B81-A274-5D8A9BDF38D9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TaskManagement.Api", "TaskManagement.Api\TaskManagement.Api.csproj", "{A0D48BE9-A7D3-4B81-A274-5D8A9BDF38D9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskManagement.Auth", "TaskManagement.Auth\TaskManagement.Auth.csproj", "{5D101D6A-FF9C-491F-966F-2C956AB25908}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TaskManagement.Auth", "TaskManagement.Auth\TaskManagement.Auth.csproj", "{5D101D6A-FF9C-491F-966F-2C956AB25908}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
