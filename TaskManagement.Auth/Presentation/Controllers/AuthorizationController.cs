@@ -277,7 +277,10 @@ namespace TaskManagement.Auth.Presentation.Controllers
 
                 identity.SetDestinations(GetDestinations);
 
-                return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
+                principal.SetResources("task_management_api");
+
+                return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
             }
 
             throw new InvalidOperationException("The specified grant type is not supported.");

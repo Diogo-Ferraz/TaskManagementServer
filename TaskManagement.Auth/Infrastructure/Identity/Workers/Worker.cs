@@ -30,17 +30,17 @@ namespace TaskManagement.Auth.Infrastructure.Identity.Workers
             await manager.CreateAsync(new OpenIddictApplicationDescriptor
             {
                 ClientId = "swagger-client",
-                ClientSecret = "test_secret",
+                ClientSecret = "901564A5-E7FE-42CB-B10D-61EF6A8F3654",
                 ConsentType = ConsentTypes.Explicit,
                 DisplayName = "Swagger Client application",
                 RedirectUris =
-                    {
-                        new Uri("https://localhost:44377/callback/login/local")
-                    },
+                {
+                    new Uri("https://localhost:44320/swagger/oauth2-redirect.html")
+                },
                 PostLogoutRedirectUris =
-                    {
-                        new Uri("https://localhost:44377/callback/logout/local")
-                    },
+                {
+                    new Uri("https://localhost:44320/callback/logout/local")
+                },
                 Permissions =
                     {
                         Permissions.Endpoints.Authorization,
@@ -50,7 +50,8 @@ namespace TaskManagement.Auth.Infrastructure.Identity.Workers
                         Permissions.ResponseTypes.Code,
                         Permissions.Scopes.Email,
                         Permissions.Scopes.Profile,
-                        Permissions.Scopes.Roles
+                        Permissions.Scopes.Roles,
+                        $"{Permissions.Prefixes.Scope}api1"
                     },
                 Requirements =
                     {

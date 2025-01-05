@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OpenIddict.Validation.AspNetCore;
 
-namespace TaskManagement.Api.Controllers
+namespace TaskManagement.Api.Presentation.Controllers
 {
     [ApiController]
     [Route("[controller]")]
@@ -18,6 +20,7 @@ namespace TaskManagement.Api.Controllers
             _logger = logger;
         }
 
+        [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
         [HttpGet(Name = "GetWeatherForecast")]
         public IEnumerable<WeatherForecast> Get()
         {

@@ -1,4 +1,5 @@
-﻿using Quartz;
+﻿using Microsoft.IdentityModel.Tokens;
+using Quartz;
 using TaskManagement.Auth.Infrastructure.Identity.Workers;
 using TaskManagement.Auth.Infrastructure.Persistence;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -37,6 +38,9 @@ namespace TaskManagement.Auth.Infrastructure.Identity
                     options.RegisterScopes(Scopes.Email, Scopes.Profile, Scopes.Roles);
 
                     options.AllowAuthorizationCodeFlow();
+
+                    options.AddEncryptionKey(new SymmetricSecurityKey(
+                        Convert.FromBase64String("DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=")));
 
                     options.AddDevelopmentEncryptionCertificate()
                        .AddDevelopmentSigningCertificate();
