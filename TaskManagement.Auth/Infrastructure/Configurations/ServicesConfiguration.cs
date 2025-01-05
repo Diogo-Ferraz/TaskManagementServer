@@ -14,7 +14,7 @@ namespace TaskManagement.Auth.Infrastructure.Configurations
         {
             services.Configure<OpenIddictSettings>(configuration.GetSection("OpenIddict"));
             services.Configure<CorsSettings>(configuration.GetSection("CorsSettings"));
-            services.Configure<List<ClientSettings>>(configuration.GetSection("ClientSettings"));
+            services.Configure<ClientSettings>(configuration.GetSection("ClientSettings"));
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()

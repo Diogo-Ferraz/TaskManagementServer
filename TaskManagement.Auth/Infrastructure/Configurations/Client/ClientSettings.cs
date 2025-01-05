@@ -2,6 +2,11 @@
 {
     public class ClientSettings
     {
+        public List<ClientSettingsOptions> Clients { get; set; } = [];
+    }
+
+    public class ClientSettingsOptions
+    {
         public string ClientId { get; set; } = string.Empty;
         public string ClientSecret { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;

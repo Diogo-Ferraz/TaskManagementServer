@@ -9,12 +9,12 @@ namespace TaskManagement.Auth.Infrastructure.Identity.Workers
     public class Worker : IHostedService
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly List<ClientSettings> _clientSettingsList;
+        private readonly ClientSettings _clientSettings;
 
-        public Worker(IServiceProvider serviceProvider, IOptions<List<ClientSettings>> clientSettingsOptions)
+        public Worker(IServiceProvider serviceProvider, IOptions<ClientSettings> clientSettings)
         {
             _serviceProvider = serviceProvider;
-            _clientSettingsList = clientSettingsOptions.Value;
+            _clientSettings = clientSettings.Value;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -26,7 +26,7 @@ namespace TaskManagement.Auth.Infrastructure.Identity.Workers
 
             var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
 
-            foreach (var clientSettings in _clientSettingsList)
+            foreach (var clientSettings in _clientSettings.Clients)
             {
                 var client = await manager.FindByClientIdAsync(clientSettings.ClientId, cancellationToken);
 
