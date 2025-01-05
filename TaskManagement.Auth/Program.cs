@@ -1,13 +1,12 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using TaskManagement.Auth.Domain.Entities;
-using TaskManagement.Auth.Infrastructure.Identity;
+using TaskManagement.Auth.Infrastructure.Configurations;
+using TaskManagement.Auth.Infrastructure.Configurations.OpenIddict;
 using TaskManagement.Auth.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("TaskManagementDbConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -16,15 +15,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseOpenIddict();
 });
 
+builder.Services.ConfigureServices(builder.Configuration);
+
 builder.Services.AddOpenIddictConfig(builder);
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders()
-    .AddDefaultUI();
+builder.Services.ConfigureCors(builder.Configuration);
 
+builder.Host.AddSerilogLogging(builder.Configuration);
 
 builder.Services.AddRazorPages()
     .AddRazorOptions(options =>
@@ -33,18 +32,6 @@ builder.Services.AddRazorPages()
         options.ViewLocationFormats.Add("/Presentation/Views/{1}/{0}.cshtml");
         options.ViewLocationFormats.Add("/Presentation/Views/Shared/{0}.cshtml");
     });
-
-builder.Host.UseSerilog((context, configuration) =>
-    configuration.ReadFrom.Configuration(context.Configuration));
-
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.WithOrigins("https://localhost:44320")
-            .AllowAnyHeader();
-    });
-});
 
 var app = builder.Build();
 

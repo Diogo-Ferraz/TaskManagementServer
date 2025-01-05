@@ -1,14 +1,21 @@
 ﻿using Microsoft.OpenApi.Models;
 
-namespace TaskManagement.Api.Infrastructure.Swagger
+namespace TaskManagement.Api.Infrastructure.Configurations.Swagger
 {
     public static class SwaggerConfig
     {
-        public static IServiceCollection AddSwaggerConfig(this IServiceCollection services)
+        public static IServiceCollection AddSwaggerConfig(this IServiceCollection services, WebApplicationBuilder builder)
         {
             services.AddSwaggerGen(options =>
             {
                 options.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+
+                var swaggerSettings = builder.Configuration.GetSection("Swagger").Get<SwaggerSettings>();
+
+                if (swaggerSettings == null)
+                {
+                    throw new InvalidOperationException("Swagger settings are not configured properly in the appsettings.json file.");
+                }
 
                 options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
                 {
@@ -17,17 +24,12 @@ namespace TaskManagement.Api.Infrastructure.Swagger
                     {
                         AuthorizationCode = new OpenApiOAuthFlow
                         {
-                            AuthorizationUrl = new Uri("https://localhost:44377/connect/authorize"),
-                            TokenUrl = new Uri("https://localhost:44377/connect/token"),
-                            Scopes = new Dictionary<string, string>
-                            {
-                                { "profile", "Access your profile information" },
-                                { "email", "Access your email address" },
-                                { "roles", "Access your role information" }
-                            }
+                            AuthorizationUrl = new Uri(swaggerSettings.AuthorizationUrl),
+                            TokenUrl = new Uri(swaggerSettings.TokenUrl),
+                            Scopes = swaggerSettings.Scopes
                         }
                     },
-                    Description = "OAuth2 Authorization Code Flow with PKCE"
+                    Description = swaggerSettings.Description
                 });
 
                 options.AddSecurityRequirement(new OpenApiSecurityRequirement

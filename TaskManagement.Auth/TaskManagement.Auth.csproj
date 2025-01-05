@@ -32,7 +32,6 @@
     <Folder Include="Domain\Enums\" />
     <Folder Include="Domain\Events\" />
     <Folder Include="Domain\ValueObjects\" />
-    <Folder Include="Infrastructure\Configurations\" />
     <Folder Include="Infrastructure\Services\" />
     <Folder Include="Infrastructure\Repositories\" />
   </ItemGroup>

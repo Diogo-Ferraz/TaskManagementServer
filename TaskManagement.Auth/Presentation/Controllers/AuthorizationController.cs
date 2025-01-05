@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
@@ -11,6 +12,7 @@ using System.Security.Claims;
 using TaskManagement.Auth.Application.Common.Attributes;
 using TaskManagement.Auth.Application.Common.Extensions;
 using TaskManagement.Auth.Domain.Entities;
+using TaskManagement.Auth.Infrastructure.Configurations.OpenIddict;
 using TaskManagement.Auth.Presentation.Models.Authorize;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -23,19 +25,22 @@ namespace TaskManagement.Auth.Presentation.Controllers
         private readonly IOpenIddictScopeManager _scopeManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly OpenIddictSettings _openIddictSettings;
 
         public AuthorizationController(
             IOpenIddictApplicationManager applicationManager,
             IOpenIddictAuthorizationManager authorizationManager,
             IOpenIddictScopeManager scopeManager,
             SignInManager<ApplicationUser> signInManager,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IOptions<OpenIddictSettings> openIddictOptions)
         {
             _applicationManager = applicationManager;
             _authorizationManager = authorizationManager;
             _scopeManager = scopeManager;
             _signInManager = signInManager;
             _userManager = userManager;
+            _openIddictSettings = openIddictOptions.Value;
         }
 
         [HttpGet("~/connect/authorize")]
@@ -278,7 +283,7 @@ namespace TaskManagement.Auth.Presentation.Controllers
                 identity.SetDestinations(GetDestinations);
 
                 var principal = new ClaimsPrincipal(identity);
-                principal.SetResources("task_management_api");
+                principal.SetResources(_openIddictSettings.Audience);
 
                 return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
             }

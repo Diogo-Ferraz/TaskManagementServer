@@ -1,4 +1,6 @@
-﻿using OpenIddict.Abstractions;
+﻿using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
+using TaskManagement.Auth.Infrastructure.Configurations.Client;
 using TaskManagement.Auth.Infrastructure.Persistence;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -7,9 +9,13 @@ namespace TaskManagement.Auth.Infrastructure.Identity.Workers
     public class Worker : IHostedService
     {
         private readonly IServiceProvider _serviceProvider;
+        private readonly List<ClientSettings> _clientSettingsList;
 
-        public Worker(IServiceProvider serviceProvider)
-            => _serviceProvider = serviceProvider;
+        public Worker(IServiceProvider serviceProvider, IOptions<List<ClientSettings>> clientSettingsOptions)
+        {
+            _serviceProvider = serviceProvider;
+            _clientSettingsList = clientSettingsOptions.Value;
+        }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -20,28 +26,24 @@ namespace TaskManagement.Auth.Infrastructure.Identity.Workers
 
             var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
 
-            var client = await manager.FindByClientIdAsync("swagger-client", cancellationToken);
-
-            if (client != null)
+            foreach (var clientSettings in _clientSettingsList)
             {
-                await manager.DeleteAsync(client, cancellationToken);
-            }
+                var client = await manager.FindByClientIdAsync(clientSettings.ClientId, cancellationToken);
 
-            await manager.CreateAsync(new OpenIddictApplicationDescriptor
-            {
-                ClientId = "swagger-client",
-                ClientSecret = "901564A5-E7FE-42CB-B10D-61EF6A8F3654",
-                ConsentType = ConsentTypes.Explicit,
-                DisplayName = "Swagger Client application",
-                RedirectUris =
+                if (client != null)
                 {
-                    new Uri("https://localhost:44320/swagger/oauth2-redirect.html")
-                },
-                PostLogoutRedirectUris =
+                    await manager.DeleteAsync(client, cancellationToken);
+                }
+
+                var applicationDescriptor = new OpenIddictApplicationDescriptor
                 {
-                    new Uri("https://localhost:44320/callback/logout/local")
-                },
-                Permissions =
+                    ClientId = clientSettings.ClientId,
+                    ClientSecret = clientSettings.ClientSecret,
+                    ConsentType = ConsentTypes.Explicit,
+                    DisplayName = clientSettings.DisplayName,
+                    RedirectUris = { new Uri(clientSettings.RedirectUri) },
+                    PostLogoutRedirectUris = { new Uri(clientSettings.PostLogoutRedirectUri) },
+                    Permissions =
                     {
                         Permissions.Endpoints.Authorization,
                         Permissions.Endpoints.EndSession,
@@ -53,11 +55,14 @@ namespace TaskManagement.Auth.Infrastructure.Identity.Workers
                         Permissions.Scopes.Roles,
                         $"{Permissions.Prefixes.Scope}api1"
                     },
-                Requirements =
+                    Requirements =
                     {
                         Requirements.Features.ProofKeyForCodeExchange
                     }
-            }, cancellationToken);
+                };
+
+                await manager.CreateAsync(applicationDescriptor, cancellationToken);
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
