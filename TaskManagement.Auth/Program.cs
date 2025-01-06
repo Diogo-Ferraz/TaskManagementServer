@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using TaskManagement.Auth.Infrastructure.Configurations;
 using TaskManagement.Auth.Infrastructure.Configurations.OpenIddict;
+using TaskManagement.Auth.Infrastructure.Identity.Workers;
 using TaskManagement.Auth.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,20 @@ builder.Services.AddRazorPages()
     });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
+    await services.SeedRolesAsync();
+
+    if (app.Environment.IsDevelopment())
+    {
+        await services.SeedDefaultAdminAsync(logger);
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
