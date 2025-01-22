@@ -81,3 +81,7 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 app.Run();
+
+// Make the implicit Program class public so test projects can access it
+// https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-9.0#basic-tests-with-the-default-webapplicationfactory
+public partial class Program { }

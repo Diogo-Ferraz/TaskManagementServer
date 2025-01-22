@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TaskManagement.Api", "TaskM
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TaskManagement.Auth", "TaskManagement.Auth\TaskManagement.Auth.csproj", "{5D101D6A-FF9C-491F-966F-2C956AB25908}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{8006056E-F98B-4AC0-8DC5-E71E19CE6A3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskManagement.Auth.Tests", "tests\TaskManagement.Auth.Tests\TaskManagement.Auth.Tests.csproj", "{61CC4782-95DC-407D-A867-C139870A6FA2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,9 +25,16 @@ Global
 		{5D101D6A-FF9C-491F-966F-2C956AB25908}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5D101D6A-FF9C-491F-966F-2C956AB25908}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5D101D6A-FF9C-491F-966F-2C956AB25908}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61CC4782-95DC-407D-A867-C139870A6FA2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61CC4782-95DC-407D-A867-C139870A6FA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61CC4782-95DC-407D-A867-C139870A6FA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61CC4782-95DC-407D-A867-C139870A6FA2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{61CC4782-95DC-407D-A867-C139870A6FA2} = {8006056E-F98B-4AC0-8DC5-E71E19CE6A3A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {723F7BC1-71E1-4E79-9567-04866AAA82CC}
