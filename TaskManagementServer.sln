@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TaskManagement.Auth", "Task
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{8006056E-F98B-4AC0-8DC5-E71E19CE6A3A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskManagement.Auth.Tests", "tests\TaskManagement.Auth.Tests\TaskManagement.Auth.Tests.csproj", "{61CC4782-95DC-407D-A867-C139870A6FA2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TaskManagement.Auth.Tests", "tests\TaskManagement.Auth.Tests\TaskManagement.Auth.Tests.csproj", "{61CC4782-95DC-407D-A867-C139870A6FA2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B0BAFDFF-0834-4415-B3D0-2362EAE650DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -34,6 +36,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{A0D48BE9-A7D3-4B81-A274-5D8A9BDF38D9} = {B0BAFDFF-0834-4415-B3D0-2362EAE650DE}
+		{5D101D6A-FF9C-491F-966F-2C956AB25908} = {B0BAFDFF-0834-4415-B3D0-2362EAE650DE}
 		{61CC4782-95DC-407D-A867-C139870A6FA2} = {8006056E-F98B-4AC0-8DC5-E71E19CE6A3A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
