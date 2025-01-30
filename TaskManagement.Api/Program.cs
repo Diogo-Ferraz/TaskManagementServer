@@ -2,6 +2,7 @@ using Serilog;
 using TaskManagement.Api.Infrastructure.Configurations;
 using TaskManagement.Api.Infrastructure.Configurations.OpenIddict;
 using TaskManagement.Api.Infrastructure.Configurations.Swagger;
+using TaskManagement.Api.Infrastructure.ExceptionHandling;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerConfig(builder);
 builder.Services.AddOpenIddictConfig(builder);
+
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
@@ -32,6 +36,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseSerilogRequestLogging();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 app.UseHttpsRedirection();
 
