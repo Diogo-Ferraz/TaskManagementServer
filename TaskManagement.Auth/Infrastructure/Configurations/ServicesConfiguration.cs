@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Serilog;
-using TaskManagement.Auth.Domain.Entities;
 using TaskManagement.Auth.Infrastructure.Configurations.Client;
 using TaskManagement.Auth.Infrastructure.Configurations.Cors;
 using TaskManagement.Auth.Infrastructure.Configurations.OpenIddict;
+using TaskManagement.Auth.Infrastructure.Identity;
 using TaskManagement.Auth.Infrastructure.Persistence;
 
 namespace TaskManagement.Auth.Infrastructure.Configurations
@@ -16,7 +16,7 @@ namespace TaskManagement.Auth.Infrastructure.Configurations
             services.Configure<CorsSettings>(configuration.GetSection("CorsSettings"));
             services.Configure<ClientSettings>(configuration.GetSection("ClientSettings"));
 
-            services.AddIdentity<ApplicationUser, IdentityRole>()
+            services.AddIdentity<AuthUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders()
                 .AddDefaultUI();

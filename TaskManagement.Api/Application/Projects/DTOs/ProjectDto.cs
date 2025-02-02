@@ -1,0 +1,16 @@
+﻿namespace TaskManagement.Api.Application.Projects.DTOs
+{
+    public class ProjectDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string UserId { get; set; }
+        public string UserName { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string CreatedBy { get; set; }
+        public DateTime LastModifiedAt { get; set; }
+        public string LastModifiedBy { get; set; }
+        public ICollection<TaskItemDto> TaskItems { get; set; }
+    }
+}

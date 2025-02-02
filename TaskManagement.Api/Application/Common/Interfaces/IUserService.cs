@@ -1,0 +1,10 @@
+﻿using TaskManagement.Api.Domain.Entities;
+
+namespace TaskManagement.Api.Application.Common.Interfaces
+{
+    public interface IUserService
+    {
+        Task<User> GetUserByIdAsync(string id);
+        Task<bool> IsInRoleAsync(string userId, string role);
+    }
+}

@@ -4,16 +4,16 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
-using TaskManagement.Auth.Domain.Entities;
+using TaskManagement.Auth.Infrastructure.Identity;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace TaskManagement.Auth.Presentation.Controllers
 {
     public class UserinfoController : Controller
     {
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly UserManager<AuthUser> _userManager;
 
-        public UserinfoController(UserManager<ApplicationUser> userManager)
+        public UserinfoController(UserManager<AuthUser> userManager)
             => _userManager = userManager;
 
         //

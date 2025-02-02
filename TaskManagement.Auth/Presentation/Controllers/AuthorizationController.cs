@@ -11,8 +11,8 @@ using OpenIddict.Server.AspNetCore;
 using System.Security.Claims;
 using TaskManagement.Auth.Application.Common.Attributes;
 using TaskManagement.Auth.Application.Common.Extensions;
-using TaskManagement.Auth.Domain.Entities;
 using TaskManagement.Auth.Infrastructure.Configurations.OpenIddict;
+using TaskManagement.Auth.Infrastructure.Identity;
 using TaskManagement.Auth.Presentation.Models.Authorize;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -23,16 +23,16 @@ namespace TaskManagement.Auth.Presentation.Controllers
         private readonly IOpenIddictApplicationManager _applicationManager;
         private readonly IOpenIddictAuthorizationManager _authorizationManager;
         private readonly IOpenIddictScopeManager _scopeManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<AuthUser> _signInManager;
+        private readonly UserManager<AuthUser> _userManager;
         private readonly OpenIddictSettings _openIddictSettings;
 
         public AuthorizationController(
             IOpenIddictApplicationManager applicationManager,
             IOpenIddictAuthorizationManager authorizationManager,
             IOpenIddictScopeManager scopeManager,
-            SignInManager<ApplicationUser> signInManager,
-            UserManager<ApplicationUser> userManager,
+            SignInManager<AuthUser> signInManager,
+            UserManager<AuthUser> userManager,
             IOptions<OpenIddictSettings> openIddictOptions)
         {
             _applicationManager = applicationManager;

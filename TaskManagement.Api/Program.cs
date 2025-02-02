@@ -3,15 +3,18 @@ using TaskManagement.Api.Infrastructure.Configurations;
 using TaskManagement.Api.Infrastructure.Configurations.OpenIddict;
 using TaskManagement.Api.Infrastructure.Configurations.Swagger;
 using TaskManagement.Api.Infrastructure.ExceptionHandling;
+using TaskManagement.Api.Infrastructure.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.AddSerilogLogging(builder.Configuration);
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSwaggerConfig(builder);
 builder.Services.AddOpenIddictConfig(builder);
+
+builder.Logging.AddCustomLogging(builder.Configuration);
+builder.Host.UseSerilog();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

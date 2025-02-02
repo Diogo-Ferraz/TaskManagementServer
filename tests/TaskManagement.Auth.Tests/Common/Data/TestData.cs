@@ -1,5 +1,5 @@
 ﻿using OpenIddict.Abstractions;
-using TaskManagement.Auth.Domain.Entities;
+using TaskManagement.Auth.Infrastructure.Identity;
 
 namespace TaskManagement.Auth.Tests.Common.Data
 {
@@ -36,9 +36,9 @@ namespace TaskManagement.Auth.Tests.Common.Data
             public const string Email = "authorized@example.com";
             public const string Password = "StrongPassword@123";
 
-            public static ApplicationUser Create()
+            public static AuthUser Create()
             {
-                return new ApplicationUser
+                return new AuthUser
                 {
                     UserName = Email,
                     Email = Email,

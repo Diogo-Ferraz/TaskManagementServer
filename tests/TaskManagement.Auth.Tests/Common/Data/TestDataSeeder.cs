@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
-using TaskManagement.Auth.Domain.Entities;
+using TaskManagement.Auth.Infrastructure.Identity;
 
 namespace TaskManagement.Auth.Tests.Common.Data
 {
@@ -15,7 +15,7 @@ namespace TaskManagement.Auth.Tests.Common.Data
 
         private static async Task SeedUserAsync(IServiceScope scope)
         {
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AuthUser>>();
 
             var user = TestData.User.Create();
             var existingUser = await userManager.FindByEmailAsync(user.Email);

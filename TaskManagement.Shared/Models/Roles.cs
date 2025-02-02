@@ -1,4 +1,4 @@
-﻿namespace TaskManagement.Auth.Domain.Constants
+﻿namespace TaskManagement.Shared.Models
 {
     public static class Roles
     {

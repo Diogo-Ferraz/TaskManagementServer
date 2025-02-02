@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using TaskManagement.Auth.Domain.Constants;
-using TaskManagement.Auth.Domain.Entities;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Auth.Infrastructure.Identity.Workers
 {
@@ -23,7 +22,7 @@ namespace TaskManagement.Auth.Infrastructure.Identity.Workers
 
         public static async Task SeedDefaultAdminAsync(this IServiceProvider serviceProvider, ILogger logger)
         {
-            var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var userManager = serviceProvider.GetRequiredService<UserManager<AuthUser>>();
 
             var adminEmail = Environment.GetEnvironmentVariable("DEV_ADMIN_EMAIL");
             var adminPassword = Environment.GetEnvironmentVariable("DEV_ADMIN_PASSWORD");
@@ -36,7 +35,7 @@ namespace TaskManagement.Auth.Infrastructure.Identity.Workers
 
             if (await userManager.FindByEmailAsync(adminEmail) == null)
             {
-                var adminUser = new ApplicationUser
+                var adminUser = new AuthUser
                 {
                     UserName = adminEmail,
                     Email = adminEmail,
