@@ -18,6 +18,13 @@ namespace TaskManagement.Api.Infrastructure.Persistence
         {
             base.OnModelCreating(builder);
 
+            builder.Entity<User>(entity =>
+            {
+                entity.ToTable("AspNetUsers");
+
+                entity.ToTable("AspNetUsers", t => t.ExcludeFromMigrations());
+            });
+
             builder.Entity<Project>(entity =>
             {
                 entity.HasKey(e => e.Id);
