@@ -10,8 +10,8 @@ namespace TaskManagement.Api.Domain.Entities
         public DateTime? DueDate { get; set; }
         public Guid ProjectId { get; set; }
         public required string AssignedUserId { get; set; }
-        public required Project Project { get; set; }
-        public required User AssignedUser { get; set; }
+        public Project? Project { get; set; }
+        public User? AssignedUser { get; set; }
     }
 
     public enum TaskStatus

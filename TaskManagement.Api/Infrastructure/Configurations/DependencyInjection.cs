@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskManagement.Api.Application.Common.Interfaces;
 using TaskManagement.Api.Application.Common.Mappings;
 using TaskManagement.Api.Application.Projects.Commands;
+using TaskManagement.Api.Application.TaskItems.Commands;
 using TaskManagement.Api.Domain.Entities;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Repositories;
@@ -26,13 +27,16 @@ namespace TaskManagement.Api.Infrastructure.Configurations
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
             services.AddScoped<IProjectRepository, ProjectRepository>();
             services.AddScoped<ITaskItemRepository, TaskItemRepository>();
-            services.AddScoped<IProjectService, ProjectService>();
-            //services.AddScoped<ITaskItemService, TaskItemService>();
             services.AddScoped<IUserService, UserService>();
 
             services.AddAutoMapper(typeof(ProjectMappingProfile).Assembly);
+            services.AddAutoMapper(typeof(TaskItemMappingProfile).Assembly);
+
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateProjectCommand).Assembly));
             services.AddValidatorsFromAssembly(typeof(CreateProjectCommandValidator).Assembly);
+
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateTaskItemCommand).Assembly));
+            services.AddValidatorsFromAssembly(typeof(CreateTaskItemCommandValidator).Assembly);
 
             return services;
         }

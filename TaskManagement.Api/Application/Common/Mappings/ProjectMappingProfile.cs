@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using TaskManagement.Api.Application.Projects.Commands;
 using TaskManagement.Api.Application.Projects.DTOs;
+using TaskManagement.Api.Application.TaskItems.DTOs;
 using TaskManagement.Api.Domain.Entities;
 
 namespace TaskManagement.Api.Application.Common.Mappings

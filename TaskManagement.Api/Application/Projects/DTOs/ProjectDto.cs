@@ -1,4 +1,6 @@
-﻿namespace TaskManagement.Api.Application.Projects.DTOs
+﻿using TaskManagement.Api.Application.TaskItems.DTOs;
+
+namespace TaskManagement.Api.Application.Projects.DTOs
 {
     public class ProjectDto
     {
