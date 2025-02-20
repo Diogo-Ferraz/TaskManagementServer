@@ -1,23 +1,26 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using OpenIddict.Validation.AspNetCore;
 using TaskManagement.Api.Application.TaskItems.Commands;
 using TaskManagement.Api.Application.TaskItems.DTOs;
 using TaskManagement.Api.Application.TaskItems.Queries;
+using TaskManagement.Api.Infrastructure.Identity;
 
 namespace TaskManagement.Api.Presentation.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
     public class TaskItemsController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICurrentUser _currentUser;
 
-        public TaskItemsController(IMediator mediator)
+        public TaskItemsController(IMediator mediator, ICurrentUser currentUser)
         {
             _mediator = mediator;
+            _currentUser = currentUser;
         }
 
         [HttpGet("{id}")]
@@ -29,7 +32,7 @@ namespace TaskManagement.Api.Presentation.Controllers
             var query = new GetTaskItemQuery
             {
                 Id = id,
-                RequestingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                RequestingUserId = _currentUser.Id
             };
 
             var result = await _mediator.Send(query);
@@ -56,7 +59,7 @@ namespace TaskManagement.Api.Presentation.Controllers
             var query = new GetTasksForProjectQuery
             {
                 ProjectId = projectId,
-                RequestingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                RequestingUserId = _currentUser.Id
             };
 
             var result = await _mediator.Send(query);
@@ -70,7 +73,7 @@ namespace TaskManagement.Api.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Create(CreateTaskItemCommand command)
         {
-            command.RequestingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            command.RequestingUserId = _currentUser.Id;
             var result = await _mediator.Send(command);
 
             if (!result.IsSuccess)
@@ -92,7 +95,7 @@ namespace TaskManagement.Api.Presentation.Controllers
             if (id != command.Id)
                 return BadRequest();
 
-            command.RequestingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            command.RequestingUserId = _currentUser.Id;
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
@@ -107,7 +110,7 @@ namespace TaskManagement.Api.Presentation.Controllers
             var command = new DeleteTaskItemCommand
             {
                 Id = id,
-                RequestingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                RequestingUserId = _currentUser.Id
             };
 
             var result = await _mediator.Send(command);

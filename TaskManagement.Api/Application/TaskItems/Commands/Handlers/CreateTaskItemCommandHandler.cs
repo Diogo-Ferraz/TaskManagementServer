@@ -62,7 +62,7 @@ namespace TaskManagement.Api.Application.TaskItems.Commands.Handlers
 
             // Verify assigned user exists and is a RegularUser
             var assignedUser = await _userService.GetUserByIdAsync(request.AssignedUserId);
-            if (!await _userService.IsInRoleAsync(assignedUser.Id, Roles.ProjectManager))
+            if (!await _userService.IsInRoleAsync(assignedUser.Id, Roles.RegularUser))
             {
                 return Result<TaskItemDto>.Failure("Assigned user must be a regular user");
             }
