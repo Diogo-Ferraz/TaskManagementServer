@@ -4,7 +4,7 @@ using TaskManagement.Api.Application.Common.Interfaces;
 using TaskManagement.Api.Application.Projects.DTOs;
 using TaskManagement.Api.Application.Projects.Queries;
 using TaskManagement.Api.Domain.Common;
-using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Application.Projects.Commands.Handlers
 {
@@ -26,8 +26,7 @@ namespace TaskManagement.Api.Application.Projects.Commands.Handlers
 
         public async Task<Result<IReadOnlyList<ProjectDto>>> Handle(GetProjectsForUserQuery request, CancellationToken cancellationToken)
         {
-            var user = await _userService.GetUserByIdAsync(request.UserId);
-            if (user?.Role != UserRole.ProjectManager)
+            if (!await _userService.IsInRoleAsync(request.UserId, Roles.ProjectManager))
             {
                 return Result<IReadOnlyList<ProjectDto>>.Failure("User is not authorized to view projects");
             }

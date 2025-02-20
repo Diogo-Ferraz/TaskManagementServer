@@ -5,6 +5,7 @@ using TaskManagement.Api.Application.Common.Interfaces;
 using TaskManagement.Api.Application.Projects.DTOs;
 using TaskManagement.Api.Domain.Common;
 using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Application.Projects.Commands.Handlers
 {
@@ -35,8 +36,7 @@ namespace TaskManagement.Api.Application.Projects.Commands.Handlers
                 return Result<ProjectDto>.Failure(validationResult.Errors.First().ErrorMessage);
             }
 
-            var user = await _userService.GetUserByIdAsync(request.UserId);
-            if (user?.Role != UserRole.ProjectManager)
+            if (!await _userService.IsInRoleAsync(request.UserId, Roles.ProjectManager))
             {
                 return Result<ProjectDto>.Failure("User is not authorized to create projects");
             }
@@ -48,7 +48,8 @@ namespace TaskManagement.Api.Application.Projects.Commands.Handlers
             await _projectRepository.AddAsync(project);
 
             var projectDto = _mapper.Map<ProjectDto>(project);
-            projectDto.UserName = user.UserName;
+            var user = await _userService.GetUserByIdAsync(request.UserId);
+            projectDto.UserName = user.UserName ?? string.Empty;
 
             return Result<ProjectDto>.Success(projectDto);
         }

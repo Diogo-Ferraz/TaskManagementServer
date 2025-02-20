@@ -6,6 +6,7 @@ using TaskManagement.Api.Application.Common.Mappings;
 using TaskManagement.Api.Application.Projects.Commands;
 using TaskManagement.Api.Application.TaskItems.Commands;
 using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Api.Infrastructure.Identity;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Repositories;
 using TaskManagement.Api.Infrastructure.Services;
@@ -28,6 +29,9 @@ namespace TaskManagement.Api.Infrastructure.Configurations
             services.AddScoped<IProjectRepository, ProjectRepository>();
             services.AddScoped<ITaskItemRepository, TaskItemRepository>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<ICurrentUser, CurrentUser>();
+
+            services.AddHttpContextAccessor();
 
             services.AddAutoMapper(typeof(ProjectMappingProfile).Assembly);
             services.AddAutoMapper(typeof(TaskItemMappingProfile).Assembly);

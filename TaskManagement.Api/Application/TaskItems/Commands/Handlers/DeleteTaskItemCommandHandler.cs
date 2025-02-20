@@ -2,7 +2,7 @@
 using MediatR;
 using TaskManagement.Api.Application.Common.Interfaces;
 using TaskManagement.Api.Domain.Common;
-using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Application.TaskItems.Commands.Handlers
 {
@@ -46,7 +46,7 @@ namespace TaskManagement.Api.Application.TaskItems.Commands.Handlers
             }
 
             // Only the project admin can delete tasks
-            if (requestingUser.Role != UserRole.ProjectManager)
+            if (!await _userService.IsInRoleAsync(requestingUser.Id, Roles.ProjectManager))
             {
                 return Result<bool>.Failure("User is not authorized to delete tasks");
             }

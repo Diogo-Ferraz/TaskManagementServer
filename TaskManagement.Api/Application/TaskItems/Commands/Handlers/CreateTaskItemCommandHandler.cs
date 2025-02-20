@@ -5,6 +5,7 @@ using TaskManagement.Api.Application.Common.Interfaces;
 using TaskManagement.Api.Application.TaskItems.DTOs;
 using TaskManagement.Api.Domain.Common;
 using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Application.TaskItems.Commands.Handlers
 {
@@ -53,7 +54,7 @@ namespace TaskManagement.Api.Application.TaskItems.Commands.Handlers
                 return Result<TaskItemDto>.Failure("Requesting user not found");
             }
 
-            if (requestingUser.Role != UserRole.ProjectManager &&
+            if (!await _userService.IsInRoleAsync(requestingUser.Id, Roles.ProjectManager) &&
                 project.UserId != request.RequestingUserId)
             {
                 return Result<TaskItemDto>.Failure("User is not authorized to create tasks in this project");
@@ -61,7 +62,7 @@ namespace TaskManagement.Api.Application.TaskItems.Commands.Handlers
 
             // Verify assigned user exists and is a RegularUser
             var assignedUser = await _userService.GetUserByIdAsync(request.AssignedUserId);
-            if (assignedUser?.Role != UserRole.RegularUser)
+            if (!await _userService.IsInRoleAsync(assignedUser.Id, Roles.ProjectManager))
             {
                 return Result<TaskItemDto>.Failure("Assigned user must be a regular user");
             }

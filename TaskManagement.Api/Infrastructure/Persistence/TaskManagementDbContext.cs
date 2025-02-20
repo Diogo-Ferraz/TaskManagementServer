@@ -1,10 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TaskManagement.Api.Domain.Common;
 using TaskManagement.Api.Domain.Entities;
 
 namespace TaskManagement.Api.Infrastructure.Persistence
 {
-    public class TaskManagementDbContext : DbContext
+    public class TaskManagementDbContext : IdentityDbContext<User>
     {
         public TaskManagementDbContext(DbContextOptions<TaskManagementDbContext> options)
             : base(options)

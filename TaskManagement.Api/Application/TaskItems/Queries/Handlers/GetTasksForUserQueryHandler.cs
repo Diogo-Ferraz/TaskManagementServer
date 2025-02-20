@@ -3,7 +3,7 @@ using MediatR;
 using TaskManagement.Api.Application.Common.Interfaces;
 using TaskManagement.Api.Application.TaskItems.DTOs;
 using TaskManagement.Api.Domain.Common;
-using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Application.TaskItems.Queries.Handlers
 {
@@ -25,9 +25,7 @@ namespace TaskManagement.Api.Application.TaskItems.Queries.Handlers
 
         public async Task<Result<IReadOnlyList<TaskItemDto>>> Handle(GetTasksForUserQuery request, CancellationToken cancellationToken)
         {
-            // Verify user exists and is a RegularUser
-            var user = await _userService.GetUserByIdAsync(request.UserId);
-            if (user?.Role != UserRole.RegularUser)
+            if (!await _userService.IsInRoleAsync(request.UserId, Roles.RegularUser))
             {
                 return Result<IReadOnlyList<TaskItemDto>>.Failure("User not found or not authorized");
             }

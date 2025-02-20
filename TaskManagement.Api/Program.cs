@@ -13,8 +13,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSwaggerConfig(builder);
 builder.Services.AddOpenIddictConfig(builder);
 
-builder.Logging.AddCustomLogging(builder.Configuration);
-builder.Host.UseSerilog();
+builder.AddCustomLogging();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

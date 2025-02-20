@@ -2,7 +2,7 @@
 using MediatR;
 using TaskManagement.Api.Application.Common.Interfaces;
 using TaskManagement.Api.Domain.Common;
-using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Application.Projects.Commands.Handlers
 {
@@ -36,8 +36,7 @@ namespace TaskManagement.Api.Application.Projects.Commands.Handlers
                 return Result<bool>.Failure("Project not found");
             }
 
-            var user = await _userService.GetUserByIdAsync(request.UserId);
-            if (user?.Role != UserRole.ProjectManager || project.UserId != request.UserId)
+            if (!await _userService.IsInRoleAsync(request.UserId, Roles.ProjectManager) || project.UserId != request.UserId)
             {
                 return Result<bool>.Failure("User is not authorized to delete this project");
             }

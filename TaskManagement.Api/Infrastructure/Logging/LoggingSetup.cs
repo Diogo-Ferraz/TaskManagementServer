@@ -4,22 +4,11 @@ namespace TaskManagement.Api.Infrastructure.Logging
 {
     public static class LoggingSetup
     {
-        public static ILoggingBuilder AddCustomLogging(
-            this ILoggingBuilder builder,
-            IConfiguration configuration)
+        public static WebApplicationBuilder AddCustomLogging(this WebApplicationBuilder builder)
         {
-            builder.ClearProviders();
-
-            builder.AddConsole();
-
-            builder.AddDebug();
-
-            var logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(configuration)
-                .Enrich.FromLogContext()
-                .CreateLogger();
-
-            builder.AddSerilog(logger);
+            builder.Host.UseSerilog((context, config) =>
+                config.ReadFrom.Configuration(builder.Configuration)
+                      .Enrich.FromLogContext());
 
             return builder;
         }

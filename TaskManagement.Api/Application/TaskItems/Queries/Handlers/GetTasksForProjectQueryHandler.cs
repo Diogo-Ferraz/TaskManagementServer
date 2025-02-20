@@ -3,7 +3,7 @@ using MediatR;
 using TaskManagement.Api.Application.Common.Interfaces;
 using TaskManagement.Api.Application.TaskItems.DTOs;
 using TaskManagement.Api.Domain.Common;
-using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Application.TaskItems.Queries.Handlers
 {
@@ -43,7 +43,7 @@ namespace TaskManagement.Api.Application.TaskItems.Queries.Handlers
             }
 
             // Only the project admin can view all tasks in a project
-            if (requestingUser.Role != UserRole.ProjectManager &&
+            if (!await _userService.IsInRoleAsync(requestingUser.Id, Roles.ProjectManager) &&
                 project.UserId != request.RequestingUserId)
             {
                 return Result<IReadOnlyList<TaskItemDto>>.Failure("User is not authorized to view tasks in this project");
