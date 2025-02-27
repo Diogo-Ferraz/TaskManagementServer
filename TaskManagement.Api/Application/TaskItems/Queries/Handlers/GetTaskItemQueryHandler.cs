@@ -31,14 +31,13 @@ namespace TaskManagement.Api.Application.TaskItems.Queries.Handlers
                 return Result<TaskItemDto>.Failure("Task not found");
             }
 
-            // Verify requesting user is authorized
             var requestingUser = await _userService.GetUserByIdAsync(request.RequestingUserId);
             if (requestingUser == null)
             {
                 return Result<TaskItemDto>.Failure("Requesting user not found");
             }
 
-            // Only the assigned user or project admin can view the task
+            // Only the assigned user or project manager can view the task
             if (!await _userService.IsInRoleAsync(requestingUser.Id, Roles.ProjectManager) &&
                 taskItem.AssignedUserId != request.RequestingUserId)
             {

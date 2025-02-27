@@ -2,10 +2,9 @@
 using MediatR;
 using TaskManagement.Api.Application.Common.Interfaces;
 using TaskManagement.Api.Application.Projects.DTOs;
-using TaskManagement.Api.Application.Projects.Queries;
 using TaskManagement.Api.Domain.Common;
 
-namespace TaskManagement.Api.Application.Projects.Commands.Handlers
+namespace TaskManagement.Api.Application.Projects.Queries.Handlers
 {
     public class GetProjectQueryHandler : IRequestHandler<GetProjectQuery, Result<ProjectDto>>
     {

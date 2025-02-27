@@ -54,5 +54,4 @@ namespace TaskManagement.Api.Application.Projects.Commands.Handlers
             return Result<ProjectDto>.Success(projectDto);
         }
     }
-
 }

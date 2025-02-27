@@ -15,11 +15,13 @@ namespace TaskManagement.Api.Presentation.Controllers
     public class TaskItemsController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ILogger<TaskItemsController> _logger;
         private readonly ICurrentUser _currentUser;
 
-        public TaskItemsController(IMediator mediator, ICurrentUser currentUser)
+        public TaskItemsController(IMediator mediator, ILogger<TaskItemsController> logger, ICurrentUser currentUser)
         {
             _mediator = mediator;
+            _logger = logger;
             _currentUser = currentUser;
         }
 
@@ -29,6 +31,7 @@ namespace TaskManagement.Api.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetById(Guid id)
         {
+            _logger.LogInformation("Retrieving Task with ID: {id}", id);
             var query = new GetTaskItemQuery
             {
                 Id = id,
@@ -45,6 +48,7 @@ namespace TaskManagement.Api.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetByUser(string userId)
         {
+            _logger.LogInformation("Retrieving all Tasks for user: {userId}", userId);
             var query = new GetTasksForUserQuery { UserId = userId };
             var result = await _mediator.Send(query);
 
@@ -56,6 +60,7 @@ namespace TaskManagement.Api.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetByProject(Guid projectId)
         {
+            _logger.LogInformation("Retrieving all Tasks for Project: {projectId}", projectId);
             var query = new GetTasksForProjectQuery
             {
                 ProjectId = projectId,
@@ -73,6 +78,7 @@ namespace TaskManagement.Api.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Create(CreateTaskItemCommand command)
         {
+            _logger.LogInformation("Creating new Task with title: {TaskName}", command.Title);
             command.RequestingUserId = _currentUser.Id;
             var result = await _mediator.Send(command);
 
@@ -92,6 +98,7 @@ namespace TaskManagement.Api.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Update(Guid id, UpdateTaskItemCommand command)
         {
+            _logger.LogInformation("Updating Task with ID: {id}", id);
             if (id != command.Id)
                 return BadRequest();
 
@@ -107,6 +114,7 @@ namespace TaskManagement.Api.Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Delete(Guid id)
         {
+            _logger.LogInformation("Deleting Task with ID: {id}", id);
             var command = new DeleteTaskItemCommand
             {
                 Id = id,
