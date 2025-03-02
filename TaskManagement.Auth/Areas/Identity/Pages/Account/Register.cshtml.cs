@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -63,6 +65,11 @@ namespace TaskManagement.Auth.Areas.Identity.Pages.Account
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
 
         /// <summary>
+        /// The list of supported roles
+        /// </summary>
+        public IList<SelectListItem> AvailableRoles { get; set; }
+
+        /// <summary>
         ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
@@ -95,6 +102,13 @@ namespace TaskManagement.Auth.Areas.Identity.Pages.Account
             [Display(Name = "Confirm password")]
             [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
             public string ConfirmPassword { get; set; }
+
+            /// <summary>
+            /// The user Role
+            /// </summary>
+            [Required]
+            [Display(Name = "Role")]
+            public string Role { get; set; }
         }
 
 
@@ -102,6 +116,15 @@ namespace TaskManagement.Auth.Areas.Identity.Pages.Account
         {
             ReturnUrl = returnUrl;
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+
+            AvailableRoles = await _roleManager.Roles
+                .Where(x => x.Name != Roles.Administrator)
+                .Select(r => new SelectListItem
+                {
+                    Value = r.Name,
+                    Text = r.Name
+                })
+                .ToListAsync();
         }
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
@@ -120,13 +143,13 @@ namespace TaskManagement.Auth.Areas.Identity.Pages.Account
                 {
                     _logger.LogInformation("User created a new account with password.");
 
-                    if (!await _roleManager.RoleExistsAsync(Roles.RegularUser))
+                    if (!await _roleManager.RoleExistsAsync(Input.Role))
                     {
-                        await _roleManager.CreateAsync(new IdentityRole(Roles.RegularUser));
+                        await _roleManager.CreateAsync(new IdentityRole(Input.Role));
                     }
 
-                    await _userManager.AddToRoleAsync(user, Roles.RegularUser);
-                    _logger.LogInformation($"Assigned {Roles.RegularUser} role to new user.");
+                    await _userManager.AddToRoleAsync(user, Input.Role);
+                    _logger.LogInformation($"Assigned {Input.Role} role to new user.");
 
                     var userId = await _userManager.GetUserIdAsync(user);
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
