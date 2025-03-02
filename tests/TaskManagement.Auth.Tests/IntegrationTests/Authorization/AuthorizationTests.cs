@@ -13,7 +13,7 @@ using Xunit.Abstractions;
 namespace TaskManagement.Auth.Tests.IntegrationTests.Authorization
 {
     [Trait("Category", "Integration")]
-    public class AuthorizationTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class AuthorizationTests : IClassFixture<CustomWebApplicationFactory<Program>>, IAsyncLifetime
     {
         private readonly HttpClient _client;
         private readonly CustomWebApplicationFactory<Program> _factory;
@@ -281,6 +281,16 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Authorization
             var error = JsonSerializer.Deserialize<JsonDocument>(content)?.RootElement;
             Assert.NotNull(error);
             Assert.Equal("invalid_grant", error?.GetProperty("error").GetString());
+        }
+
+        public async Task InitializeAsync()
+        {
+            await _factory.ResetDatabaseAsync();
+        }
+
+        public async Task DisposeAsync()
+        {
+            await Task.CompletedTask;
         }
     }
 }
