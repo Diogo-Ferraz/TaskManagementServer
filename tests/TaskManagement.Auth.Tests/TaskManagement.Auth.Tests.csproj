@@ -24,15 +24,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\TaskManagement.Auth\TaskManagement.Auth.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<Using Include="Xunit" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <Folder Include="Configurations\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\..\src\TaskManagement.Auth\TaskManagement.Auth.csproj" />
 	</ItemGroup>
 
 </Project>
