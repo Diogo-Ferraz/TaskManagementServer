@@ -12,10 +12,11 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["TaskManagement.Auth/TaskManagement.Auth.csproj", "TaskManagement.Auth/"]
-RUN dotnet restore "./TaskManagement.Auth/TaskManagement.Auth.csproj"
+COPY ["src/TaskManagement.Auth/TaskManagement.Auth.csproj", "src/TaskManagement.Auth/"]
+COPY ["src/TaskManagement.Shared/TaskManagement.Shared.csproj", "src/TaskManagement.Shared/"]
+RUN dotnet restore "./src/TaskManagement.Auth/TaskManagement.Auth.csproj"
 COPY . .
-WORKDIR "/src/TaskManagement.Auth"
+WORKDIR "/src/src/TaskManagement.Auth"
 RUN dotnet build "./TaskManagement.Auth.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage

@@ -39,6 +39,7 @@ namespace TaskManagement.Auth.Infrastructure.Configurations.OpenIddict
                     options.SetAuthorizationEndpointUris("connect/authorize")
                        .SetEndSessionEndpointUris("connect/logout")
                        .SetTokenEndpointUris("connect/token")
+                       .SetIssuer("https://auth-service/")
                        .SetUserInfoEndpointUris("connect/userinfo");
 
                     options.RegisterScopes(Scopes.Email, Scopes.Profile, Scopes.Roles);

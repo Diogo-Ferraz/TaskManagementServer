@@ -11,7 +11,11 @@ var connectionString = builder.Configuration.GetConnectionString("TaskManagement
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseSqlServer(connectionString);
+    options.UseSqlServer(connectionString,
+        sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null));
 
     options.UseOpenIddict();
 });
@@ -25,6 +29,8 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.ConfigureCors(builder.Configuration);
 
 builder.Host.AddSerilogLogging(builder.Configuration);
+
+builder.Services.AddHealthChecks();
 
 builder.Services.AddRazorPages()
     .AddRazorOptions(options =>
@@ -41,6 +47,18 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
 
     var logger = services.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        logger.LogInformation("Applying database migrations...");
+        var dbContext = services.GetRequiredService<ApplicationDbContext>();
+        await dbContext.Database.MigrateAsync();
+        logger.LogInformation("Database migrations applied successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while migrating the database");
+    }
 
     await services.SeedRolesAsync();
 
@@ -62,6 +80,8 @@ else
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
+
+app.MapHealthChecks("/health");
 
 app.UseSerilogRequestLogging();
 

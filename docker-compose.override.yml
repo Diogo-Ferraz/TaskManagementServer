@@ -1,0 +1,50 @@
+version: '3.8'
+services:
+  sqlserver:
+    environment:
+      - MSSQL_SA_PASSWORD=Passw0rd!1234
+  auth-service:
+    entrypoint: ["dotnet", "TaskManagement.Auth.dll"]
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=https://+:443
+      - ASPNETCORE_HTTPS_PORT=8081
+      - ConnectionStrings__TaskManagementDbConnection=Server=sqlserver,1433;Database=TaskManagementDb;User Id=sa;Password=Passw0rd!1234;TrustServerCertificate=True;
+      - OpenIddict__Audience=task_management_api_dev
+      - OpenIddict__EncryptionKey=DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=
+      - CorsSettings__AllowedOrigins__0=https://localhost:7140
+      - CorsSettings__AllowedOrigins__1=https://localhost:443
+      - CorsSettings__AllowedOrigins__2=https://localhost:443
+      - CorsSettings__AllowedOrigins__3=https://api-service:443
+      - ClientSettings__Clients__0__ClientId=swagger-client
+      - ClientSettings__Clients__0__ClientSecret=901564A5-E7FE-42CB-B10D-61EF6A8F3654
+      - ClientSettings__Clients__0__DisplayName=Swagger Client application
+      - ClientSettings__Clients__0__RedirectUri=https://localhost:7140/swagger/oauth2-redirect.html
+      - ClientSettings__Clients__0__PostLogoutRedirectUri=https://localhost:7140/callback/logout/local
+    depends_on:
+      - sqlserver
+    volumes:
+      - ~/.aspnet/https:/https:ro
+  api-service:
+    entrypoint: ["dotnet", "TaskManagement.Api.dll"]
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=https://+:443
+      - ASPNETCORE_HTTPS_PORT=8081
+      - ConnectionStrings__TaskManagementDbConnection=Server=sqlserver,1433;Database=TaskManagementDb;User Id=sa;Password=Passw0rd!1234;TrustServerCertificate=True;
+      - OpenIddict__Issuer=https://auth-service/
+      - OpenIddict__Audience=task_management_api_dev
+      - OpenIddict__EncryptionKey=DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=
+      - Swagger__ClientId=swagger-client
+      - Swagger__ClientSecret=901564A5-E7FE-42CB-B10D-61EF6A8F3654
+      - Swagger__AuthorizationUrl=https://localhost:7134/connect/authorize
+      - Swagger__TokenUrl=https://localhost:7134/connect/token
+      - Swagger__Scopes__profile=Access your profile information
+      - Swagger__Scopes__email=Access your email address
+      - Swagger__Scopes__roles=Access your role information
+      - Swagger__Description=OAuth2 Authorization Code Flow with PKCE
+    depends_on:
+      - sqlserver
+      - auth-service
+    volumes:
+      - ~/.aspnet/https:/https:ro

@@ -18,8 +18,13 @@ namespace TaskManagement.Api.Infrastructure.Configurations
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddDbContext<TaskManagementDbContext>(options =>
-                options.UseSqlServer(
-                    configuration.GetConnectionString("TaskManagementDbConnection")));
+            {
+                options.UseSqlServer(configuration.GetConnectionString("TaskManagementDbConnection"),
+                    sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorNumbersToAdd: null));
+            });
 
             services.AddIdentity<User, IdentityRole>()
                 .AddEntityFrameworkStores<TaskManagementDbContext>()

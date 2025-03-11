@@ -22,7 +22,14 @@ namespace TaskManagement.Api.Infrastructure.Configurations.OpenIddict
                     options.AddEncryptionKey(new SymmetricSecurityKey(
                         Convert.FromBase64String(openIddictSettings.EncryptionKey)));
 
-                    options.UseSystemNetHttp();
+                    options.UseSystemNetHttp()
+                    .ConfigureHttpClientHandler(handler =>
+                    {
+                        if (builder.Environment.IsDevelopment())
+                        {
+                            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                        }
+                    });
 
                     options.UseAspNetCore();
                 });
