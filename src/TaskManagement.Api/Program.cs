@@ -19,6 +19,7 @@ builder.AddCustomLogging();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -73,6 +74,8 @@ if (app.Environment.IsDevelopment())
         options.OAuthUsePkce();
     });
 }
+
+app.MapHealthChecks("/health");
 
 app.UseSerilogRequestLogging();
 
