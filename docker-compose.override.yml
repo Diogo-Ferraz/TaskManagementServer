@@ -8,6 +8,7 @@ services:
       - ASPNETCORE_Kestrel__Certificates__Default__Password=${CERT_PASSWORD:-mypassword123}
       - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
       - ConnectionStrings__TaskManagementDbConnection=Server=sqlserver,1433;Database=TaskManagementDb;User Id=sa;Password=${SQL_PASSWORD:-Passw0rd!1234};TrustServerCertificate=True;
+      - OpenIddict__Issuer=https://auth-service:8081/
       - OpenIddict__Audience=task_management_api_dev
       - OpenIddict__EncryptionKey=${OPENIDDICT_ENCRYPTION_KEY:-DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=}
       - CorsSettings__AllowedOrigins__0=https://localhost:7140

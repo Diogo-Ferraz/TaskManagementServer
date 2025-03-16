@@ -3,11 +3,13 @@ using FluentAssertions;
 using FluentValidation;
 using FluentValidation.Results;
 using Moq;
-using TaskManagement.Api.Application.Common.Interfaces;
-using TaskManagement.Api.Application.TaskItems.Commands;
-using TaskManagement.Api.Application.TaskItems.Commands.Handlers;
-using TaskManagement.Api.Application.TaskItems.DTOs;
-using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Api.Features.Tasks.Commands;
+using TaskManagement.Api.Features.Tasks.Commands.Handlers;
+using TaskManagement.Api.Features.Tasks.Models;
+using TaskManagement.Api.Features.Tasks.Models.DTOs;
+using TaskManagement.Api.Features.Tasks.Repositories.Interfaces;
+using TaskManagement.Api.Features.Users.Models;
+using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.TaskItems.Commands
@@ -44,7 +46,7 @@ namespace TaskManagement.Api.Tests.UnitTests.TaskItems.Commands
                 Id = taskId,
                 Title = "Updated Task",
                 Description = "Updated Description",
-                Status = Domain.Entities.TaskStatus.InProgress,
+                Status = Features.Tasks.Models.TaskStatus.InProgress,
                 AssignedUserId = "user123",
                 RequestingUserId = "manager123",
                 DueDate = DateTime.UtcNow.AddDays(10)
@@ -55,7 +57,7 @@ namespace TaskManagement.Api.Tests.UnitTests.TaskItems.Commands
                 Id = taskId,
                 Title = "Original Task",
                 Description = "Original Description",
-                Status = Domain.Entities.TaskStatus.Todo,
+                Status = Features.Tasks.Models.TaskStatus.Todo,
                 AssignedUserId = "olduser123",
                 ProjectId = Guid.NewGuid()
             };
@@ -120,7 +122,7 @@ namespace TaskManagement.Api.Tests.UnitTests.TaskItems.Commands
                 Id = taskId,
                 Title = "Updated Task",
                 Description = "Updated Description",
-                Status = Domain.Entities.TaskStatus.InProgress,
+                Status = Features.Tasks.Models.TaskStatus.InProgress,
                 AssignedUserId = userId,
                 RequestingUserId = userId,
                 DueDate = DateTime.UtcNow.AddDays(10)
@@ -131,7 +133,7 @@ namespace TaskManagement.Api.Tests.UnitTests.TaskItems.Commands
                 Id = taskId,
                 Title = "Original Task",
                 Description = "Original Description",
-                Status = Domain.Entities.TaskStatus.Todo,
+                Status = Features.Tasks.Models.TaskStatus.Todo,
                 AssignedUserId = userId,
                 ProjectId = Guid.NewGuid()
             };

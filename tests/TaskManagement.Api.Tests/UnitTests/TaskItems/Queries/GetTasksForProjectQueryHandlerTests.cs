@@ -1,11 +1,15 @@
 ﻿using AutoMapper;
 using FluentAssertions;
 using Moq;
-using TaskManagement.Api.Application.Common.Interfaces;
-using TaskManagement.Api.Application.TaskItems.DTOs;
-using TaskManagement.Api.Application.TaskItems.Queries;
-using TaskManagement.Api.Application.TaskItems.Queries.Handlers;
-using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Api.Features.Projects.Models;
+using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
+using TaskManagement.Api.Features.Tasks.Models;
+using TaskManagement.Api.Features.Tasks.Models.DTOs;
+using TaskManagement.Api.Features.Tasks.Queries;
+using TaskManagement.Api.Features.Tasks.Queries.Handlers;
+using TaskManagement.Api.Features.Tasks.Repositories.Interfaces;
+using TaskManagement.Api.Features.Users.Models;
+using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.TaskItems.Queries

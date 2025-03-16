@@ -4,12 +4,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using TaskManagement.Api.Application.TaskItems.Commands;
-using TaskManagement.Api.Application.TaskItems.DTOs;
-using TaskManagement.Api.Application.TaskItems.Queries;
-using TaskManagement.Api.Domain.Common;
-using TaskManagement.Api.Infrastructure.Identity;
-using TaskManagement.Api.Presentation.Controllers;
+using TaskManagement.Api.Features.Tasks.Commands;
+using TaskManagement.Api.Features.Tasks.Controllers;
+using TaskManagement.Api.Features.Tasks.Models.DTOs;
+using TaskManagement.Api.Features.Tasks.Queries;
+using TaskManagement.Api.Features.Users.Services.Interfaces;
+using TaskManagement.Api.Infrastructure.Common.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Controllers
 {
@@ -17,14 +17,14 @@ namespace TaskManagement.Api.Tests.UnitTests.Controllers
     {
         private readonly Mock<IMediator> _mediatorMock;
         private readonly Mock<ILogger<TaskItemsController>> _loggerMock;
-        private readonly Mock<ICurrentUser> _currentUserMock;
+        private readonly Mock<ICurrentUserService> _currentUserMock;
         private readonly TaskItemsController _controller;
 
         public TaskItemsControllerTests()
         {
             _mediatorMock = new Mock<IMediator>();
             _loggerMock = new Mock<ILogger<TaskItemsController>>();
-            _currentUserMock = new Mock<ICurrentUser>();
+            _currentUserMock = new Mock<ICurrentUserService>();
 
             _controller = new TaskItemsController(
                 _mediatorMock.Object,

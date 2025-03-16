@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
-using TaskManagement.Auth.Infrastructure.Identity;
+using TaskManagement.Auth.Features.Identity.Models;
 
 namespace TaskManagement.Auth.Tests.Common.Data
 {

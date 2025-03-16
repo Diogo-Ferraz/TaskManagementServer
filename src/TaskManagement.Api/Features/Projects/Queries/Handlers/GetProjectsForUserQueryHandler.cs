@@ -1,0 +1,40 @@
+﻿using AutoMapper;
+using MediatR;
+using TaskManagement.Api.Features.Projects.Models.DTOs;
+using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
+using TaskManagement.Api.Features.Users.Services.Interfaces;
+using TaskManagement.Api.Infrastructure.Common.Models;
+using TaskManagement.Shared.Models;
+
+namespace TaskManagement.Api.Features.Projects.Queries.Handlers
+{
+    public class GetProjectsForAdminQueryHandler : IRequestHandler<GetProjectsForUserQuery, Result<IReadOnlyList<ProjectDto>>>
+    {
+        private readonly IProjectRepository _projectRepository;
+        private readonly IUserService _userService;
+        private readonly IMapper _mapper;
+
+        public GetProjectsForAdminQueryHandler(
+            IProjectRepository projectRepository,
+            IUserService userService,
+            IMapper mapper)
+        {
+            _projectRepository = projectRepository;
+            _userService = userService;
+            _mapper = mapper;
+        }
+
+        public async Task<Result<IReadOnlyList<ProjectDto>>> Handle(GetProjectsForUserQuery request, CancellationToken cancellationToken)
+        {
+            if (!await _userService.IsInRoleAsync(request.UserId, Roles.ProjectManager))
+            {
+                return Result<IReadOnlyList<ProjectDto>>.Failure("User is not authorized to view projects");
+            }
+
+            var projects = await _projectRepository.GetProjectsByUserIdAsync(request.UserId);
+            var projectDtos = _mapper.Map<IReadOnlyList<ProjectDto>>(projects);
+
+            return Result<IReadOnlyList<ProjectDto>>.Success(projectDtos);
+        }
+    }
+}

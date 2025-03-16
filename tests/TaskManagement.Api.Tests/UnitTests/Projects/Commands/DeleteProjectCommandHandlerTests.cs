@@ -2,10 +2,11 @@
 using FluentValidation;
 using FluentValidation.Results;
 using Moq;
-using TaskManagement.Api.Application.Common.Interfaces;
-using TaskManagement.Api.Application.Projects.Commands;
-using TaskManagement.Api.Application.Projects.Commands.Handlers;
-using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Api.Features.Projects.Commands;
+using TaskManagement.Api.Features.Projects.Commands.Handlers;
+using TaskManagement.Api.Features.Projects.Models;
+using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
+using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Projects.Commands

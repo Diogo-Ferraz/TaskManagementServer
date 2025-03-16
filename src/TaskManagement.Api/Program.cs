@@ -1,92 +1,50 @@
-using Microsoft.EntityFrameworkCore;
 using Serilog;
-using TaskManagement.Api.Infrastructure.Configurations;
-using TaskManagement.Api.Infrastructure.Configurations.OpenIddict;
-using TaskManagement.Api.Infrastructure.Configurations.Swagger;
-using TaskManagement.Api.Infrastructure.ExceptionHandling;
-using TaskManagement.Api.Infrastructure.Logging;
-using TaskManagement.Api.Infrastructure.Persistence;
+using Serilog.Events;
+using TaskManagement.Api.Features.Projects.Configuration;
+using TaskManagement.Api.Features.Tasks.Configuration;
+using TaskManagement.Api.Features.Users.Configuration;
+using TaskManagement.Api.Infrastructure.Common.Configuration;
+using TaskManagement.Api.Infrastructure.Persistence.Configuration;
+using TaskManagement.Api.Infrastructure.Security.Configuration;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddSwaggerConfig(builder);
-builder.Services.AddOpenIddictConfig(builder);
-
-builder.AddCustomLogging();
-
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddProblemDetails();
-builder.Services.AddHealthChecks();
-
-var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
+try
 {
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
+    Log.Information("Starting API web host");
 
-    try
-    {
-        logger.LogInformation("API service waiting for Auth migrations...");
+    var builder = WebApplication.CreateBuilder(args);
 
-        var maxRetries = 10;
-        var retryCount = 0;
+    builder.Services.AddDatabaseConfiguration(builder.Configuration);
+    builder.Services.AddApiConfiguration();
+    builder.AddLoggingConfiguration();
+    builder.Services.AddSwaggerConfiguration(builder);
 
-        while (retryCount < maxRetries)
-        {
-            try
-            {
-                var dbContext = services.GetRequiredService<TaskManagementDbContext>();
-                await dbContext.Database.MigrateAsync();
-                logger.LogInformation("API migrations applied successfully");
-                break;
-            }
-            catch (Exception)
-            {
-                retryCount++;
-                logger.LogInformation("Waiting for database to be available. Retry {RetryCount}/{MaxRetries}", retryCount, maxRetries);
-                await Task.Delay(TimeSpan.FromSeconds(5));
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Migration error in API service");
-    }
+    builder.Services.AddOpenIddictValidation(builder);
+
+    builder.Services.AddProjectsFeature();
+    builder.Services.AddTasksFeature();
+    builder.Services.AddUserFeature();
+
+    var app = builder.Build();
+
+    await app.ApplyMigrationsAsync();
+
+    app.ConfigureRequestPipeline(builder.Environment);
+
+    app.Run();
+    return 0;
 }
-
-if (app.Environment.IsDevelopment())
+catch (Exception ex)
 {
-    var swaggerSettings = builder.Configuration.GetSection("Swagger").Get<SwaggerSettings>();
-    if (swaggerSettings == null)
-    {
-        throw new InvalidOperationException("Swagger settings are missing.");
-    }
-
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.OAuthClientId(swaggerSettings.ClientId);
-        options.OAuthClientSecret(swaggerSettings.ClientSecret);
-        options.OAuthUsePkce();
-    });
+    Log.Fatal(ex, "API host terminated unexpectedly");
+    return 1;
 }
-
-app.MapHealthChecks("/health");
-
-app.UseSerilogRequestLogging();
-
-app.UseExceptionHandler();
-app.UseStatusCodePages();
-
-app.UseHttpsRedirection();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
+finally
+{
+    Log.CloseAndFlush();
+}

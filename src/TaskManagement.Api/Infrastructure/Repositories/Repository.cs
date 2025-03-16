@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using TaskManagement.Api.Application.Common.Interfaces;
-using TaskManagement.Api.Domain.Common;
+using TaskManagement.Api.Infrastructure.Common.Models;
 using TaskManagement.Api.Infrastructure.Persistence;
+using TaskManagement.Api.Infrastructure.Repositories.Interfaces;
 
 namespace TaskManagement.Api.Infrastructure.Repositories
 {

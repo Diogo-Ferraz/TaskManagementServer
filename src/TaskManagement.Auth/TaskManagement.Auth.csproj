@@ -11,6 +11,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Domain\**" />
+    <Compile Remove="Infrastructure\Repositories\**" />
+    <Compile Remove="Infrastructure\Services\**" />
+    <Content Remove="Domain\**" />
+    <Content Remove="Infrastructure\Repositories\**" />
+    <Content Remove="Infrastructure\Services\**" />
+    <EmbeddedResource Remove="Domain\**" />
+    <EmbeddedResource Remove="Infrastructure\Repositories\**" />
+    <EmbeddedResource Remove="Infrastructure\Services\**" />
+    <None Remove="Domain\**" />
+    <None Remove="Infrastructure\Repositories\**" />
+    <None Remove="Infrastructure\Services\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.11" />
@@ -26,18 +41,6 @@
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.4" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Application\DTOs\" />
-    <Folder Include="Application\Interfaces\" />
-    <Folder Include="Application\Commands\" />
-    <Folder Include="Application\Queries\" />
-    <Folder Include="Domain\Enums\" />
-    <Folder Include="Domain\Events\" />
-    <Folder Include="Domain\ValueObjects\" />
-    <Folder Include="Infrastructure\Services\" />
-    <Folder Include="Infrastructure\Repositories\" />
   </ItemGroup>
 
   <ItemGroup>

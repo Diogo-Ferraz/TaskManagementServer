@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using TaskManagement.Api.Domain.Common;
-using TaskManagement.Api.Domain.Entities;
+using TaskManagement.Api.Features.Projects.Models;
+using TaskManagement.Api.Features.Tasks.Models;
+using TaskManagement.Api.Features.Users.Models;
+using TaskManagement.Api.Infrastructure.Common.Models;
 
 namespace TaskManagement.Api.Infrastructure.Persistence
 {

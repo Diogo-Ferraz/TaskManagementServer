@@ -13,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.Encodings.Web;
-using TaskManagement.Auth.Infrastructure.Identity;
+using TaskManagement.Auth.Features.Identity.Models;
 using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Auth.Areas.Identity.Pages.Account

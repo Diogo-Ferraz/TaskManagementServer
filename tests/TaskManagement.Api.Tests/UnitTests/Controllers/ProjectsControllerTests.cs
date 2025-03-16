@@ -4,12 +4,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using TaskManagement.Api.Application.Projects.Commands;
-using TaskManagement.Api.Application.Projects.DTOs;
-using TaskManagement.Api.Application.Projects.Queries;
-using TaskManagement.Api.Domain.Common;
-using TaskManagement.Api.Infrastructure.Identity;
-using TaskManagement.Api.Presentation.Controllers;
+using TaskManagement.Api.Features.Projects.Commands;
+using TaskManagement.Api.Features.Projects.Controllers;
+using TaskManagement.Api.Features.Projects.Models.DTOs;
+using TaskManagement.Api.Features.Projects.Queries;
+using TaskManagement.Api.Features.Users.Services.Interfaces;
+using TaskManagement.Api.Infrastructure.Common.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Controllers
 {
@@ -17,14 +17,14 @@ namespace TaskManagement.Api.Tests.UnitTests.Controllers
     {
         private readonly Mock<IMediator> _mediatorMock;
         private readonly Mock<ILogger<ProjectsController>> _loggerMock;
-        private readonly Mock<ICurrentUser> _currentUserMock;
+        private readonly Mock<ICurrentUserService> _currentUserMock;
         private readonly ProjectsController _controller;
 
         public ProjectsControllerTests()
         {
             _mediatorMock = new Mock<IMediator>();
             _loggerMock = new Mock<ILogger<ProjectsController>>();
-            _currentUserMock = new Mock<ICurrentUser>();
+            _currentUserMock = new Mock<ICurrentUserService>();
 
             _controller = new ProjectsController(
                 _mediatorMock.Object,

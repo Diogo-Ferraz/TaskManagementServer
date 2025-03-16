@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
-using TaskManagement.Auth.Infrastructure.Identity;
+using TaskManagement.Auth.Features.Identity.Models;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace TaskManagement.Auth.Presentation.Controllers

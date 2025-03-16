@@ -9,10 +9,10 @@ using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using System.Security.Claims;
-using TaskManagement.Auth.Application.Common.Attributes;
-using TaskManagement.Auth.Application.Common.Extensions;
-using TaskManagement.Auth.Infrastructure.Configurations.OpenIddict;
-using TaskManagement.Auth.Infrastructure.Identity;
+using TaskManagement.Auth.Features.Authorization.Attributes;
+using TaskManagement.Auth.Features.Authorization.Extensions;
+using TaskManagement.Auth.Features.Identity.Models;
+using TaskManagement.Auth.Infrastructure.Common.Settings;
 using TaskManagement.Auth.Presentation.Models.Authorize;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 

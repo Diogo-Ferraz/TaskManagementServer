@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using TaskManagement.Api.Application.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
 
 namespace TaskManagement.Api.Infrastructure.ExceptionHandling
 {
