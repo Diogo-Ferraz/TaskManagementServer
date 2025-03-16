@@ -1,4 +1,4 @@
-﻿namespace TaskManagement.Auth.Tests.IntegrationTests.Authorization.Models
+﻿namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Models
 {
     public record TokenResponse(
         string AccessToken,

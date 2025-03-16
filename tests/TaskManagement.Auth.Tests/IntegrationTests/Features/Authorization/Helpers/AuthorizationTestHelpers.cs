@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
-using TaskManagement.Auth.Tests.IntegrationTests.Authorization.Models;
+using TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Models;
 
-namespace TaskManagement.Auth.Tests.IntegrationTests.Authorization.Helpers
+namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Helpers
 {
     public static class AuthorizationTestHelpers
     {

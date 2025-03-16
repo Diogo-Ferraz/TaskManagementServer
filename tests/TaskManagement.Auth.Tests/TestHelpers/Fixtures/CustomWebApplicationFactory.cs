@@ -5,9 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenIddict.EntityFrameworkCore.Models;
 using TaskManagement.Auth.Infrastructure.Persistence;
-using TaskManagement.Auth.Tests.Common.Data;
+using TaskManagement.Auth.Tests.TestHelpers.Data;
 
-namespace TaskManagement.Auth.Tests.Common.Factory
+namespace TaskManagement.Auth.Tests.TestHelpers.Fixtures
 {
     public class CustomWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup>, IAsyncLifetime
     where TStartup : class

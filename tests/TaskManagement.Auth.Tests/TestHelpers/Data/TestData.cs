@@ -1,7 +1,7 @@
 ﻿using OpenIddict.Abstractions;
 using TaskManagement.Auth.Features.Identity.Models;
 
-namespace TaskManagement.Auth.Tests.Common.Data
+namespace TaskManagement.Auth.Tests.TestHelpers.Data
 {
     public static class TestData
     {

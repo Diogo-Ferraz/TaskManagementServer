@@ -1,6 +1,6 @@
-﻿using TaskManagement.Auth.Tests.Common.Data;
+﻿using TaskManagement.Auth.Tests.TestHelpers.Data;
 
-namespace TaskManagement.Auth.Tests.IntegrationTests.Authorization.Models
+namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Models
 {
     public record AuthorizationParameters(
         string ClientId = TestData.Client.Id,

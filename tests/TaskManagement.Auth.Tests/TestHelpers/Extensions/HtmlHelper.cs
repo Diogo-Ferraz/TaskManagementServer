@@ -3,7 +3,7 @@ using AngleSharp.Html.Dom;
 using AngleSharp.Io;
 using System.Net.Http.Headers;
 
-namespace TaskManagement.Auth.Tests.Helpers
+namespace TaskManagement.Auth.Tests.TestHelpers.Extensions
 {
     public class HtmlHelpers
     {

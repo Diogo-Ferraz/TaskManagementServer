@@ -9,6 +9,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="Configurations\**" />
+	  <EmbeddedResource Remove="Configurations\**" />
+	  <None Remove="Configurations\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="AngleSharp" Version="1.2.0" />
 		<PackageReference Include="coverlet.collector" Version="6.0.0" />
 		<PackageReference Include="FluentAssertions" Version="7.0.0" />
@@ -25,10 +31,6 @@
 
 	<ItemGroup>
 		<Using Include="Xunit" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Configurations\" />
 	</ItemGroup>
 
 	<ItemGroup>

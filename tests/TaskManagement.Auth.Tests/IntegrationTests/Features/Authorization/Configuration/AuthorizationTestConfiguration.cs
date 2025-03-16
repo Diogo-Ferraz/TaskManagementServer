@@ -1,4 +1,4 @@
-﻿namespace TaskManagement.Auth.Tests.IntegrationTests.Authorization.Configurations
+﻿namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Configuration
 {
     public static class AuthorizationTestConfiguration
     {

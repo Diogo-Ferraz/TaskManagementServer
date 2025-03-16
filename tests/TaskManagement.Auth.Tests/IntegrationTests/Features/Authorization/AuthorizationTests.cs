@@ -2,15 +2,15 @@
 using System.Net;
 using System.Text.Json;
 using System.Web;
-using TaskManagement.Auth.Tests.Common.Data;
-using TaskManagement.Auth.Tests.Common.Factory;
-using TaskManagement.Auth.Tests.Helpers;
-using TaskManagement.Auth.Tests.IntegrationTests.Authorization.Configurations;
-using TaskManagement.Auth.Tests.IntegrationTests.Authorization.Helpers;
-using TaskManagement.Auth.Tests.IntegrationTests.Authorization.Models;
+using TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Configuration;
+using TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Helpers;
+using TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Models;
+using TaskManagement.Auth.Tests.TestHelpers.Data;
+using TaskManagement.Auth.Tests.TestHelpers.Extensions;
+using TaskManagement.Auth.Tests.TestHelpers.Fixtures;
 using Xunit.Abstractions;
 
-namespace TaskManagement.Auth.Tests.IntegrationTests.Authorization
+namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization
 {
     [Trait("Category", "Integration")]
     public class AuthorizationTests : IClassFixture<CustomWebApplicationFactory<Program>>, IAsyncLifetime

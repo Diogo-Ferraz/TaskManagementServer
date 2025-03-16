@@ -1,6 +1,6 @@
 ﻿using AngleSharp.Html.Dom;
 
-namespace TaskManagement.Auth.Tests.Helpers
+namespace TaskManagement.Auth.Tests.TestHelpers.Extensions
 {
     public static class HttpClientExtensions
     {
