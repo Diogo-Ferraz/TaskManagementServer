@@ -1,7 +1,7 @@
 using Serilog;
 using Serilog.Events;
 using TaskManagement.Api.Features.Projects.Configuration;
-using TaskManagement.Api.Features.Tasks.Configuration;
+using TaskManagement.Api.Features.TaskItems.Configuration;
 using TaskManagement.Api.Features.Users.Configuration;
 using TaskManagement.Api.Infrastructure.Common.Configuration;
 using TaskManagement.Api.Infrastructure.Persistence.Configuration;

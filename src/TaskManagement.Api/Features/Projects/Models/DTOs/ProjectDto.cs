@@ -1,4 +1,4 @@
-﻿using TaskManagement.Api.Features.Tasks.Models.DTOs;
+﻿using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 
 namespace TaskManagement.Api.Features.Projects.Models.DTOs
 {

@@ -1,4 +1,4 @@
-﻿using TaskManagement.Api.Features.Tasks.Models;
+﻿using TaskManagement.Api.Features.TaskItems.Models;
 using TaskManagement.Api.Features.Users.Models;
 using TaskManagement.Api.Infrastructure.Common.Models;
 

@@ -2,8 +2,8 @@
 using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
-using TaskManagement.Api.Features.Tasks.Models;
-using TaskManagement.Api.Features.Tasks.Models.DTOs;
+using TaskManagement.Api.Features.TaskItems.Models;
+using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 
 namespace TaskManagement.Api.Features.Projects.Mappings
 {

@@ -1,5 +1,5 @@
 ﻿using TaskManagement.Api.Features.Projects.Models;
-using TaskManagement.Api.Features.Tasks.Models;
+using TaskManagement.Api.Features.TaskItems.Models;
 using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.Users.Models
