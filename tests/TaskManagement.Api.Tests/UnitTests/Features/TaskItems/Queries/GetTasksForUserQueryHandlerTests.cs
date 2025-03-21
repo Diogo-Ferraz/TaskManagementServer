@@ -37,10 +37,10 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
             var query = new GetTasksForUserQuery { UserId = userId };
 
             var taskItems = new List<TaskItem>
-        {
-            new TaskItem { Id = Guid.NewGuid(), Title = "Task 1", AssignedUserId = "user1" },
-            new TaskItem { Id = Guid.NewGuid(), Title = "Task 2", AssignedUserId = "user2" }
-        };
+            {
+                new TaskItem { Id = Guid.NewGuid(), Title = "Task 1", AssignedUserId = "user1" },
+                new TaskItem { Id = Guid.NewGuid(), Title = "Task 2", AssignedUserId = "user2" }
+            };
 
             var taskItemDtos = taskItems.Select(t => new TaskItemDto
             {

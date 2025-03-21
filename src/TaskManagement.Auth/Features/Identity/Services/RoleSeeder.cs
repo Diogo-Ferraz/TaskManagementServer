@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using TaskManagement.Auth.Features.Identity.Models;
 using TaskManagement.Shared.Models;
 
@@ -21,44 +22,50 @@ namespace TaskManagement.Auth.Features.Identity.Services
             }
         }
 
-        public static async Task SeedDefaultAdminAsync(this IServiceProvider serviceProvider, ILogger logger)
+        public static async Task SeedUsersAsync(this IServiceProvider serviceProvider, ILogger logger)
         {
             var userManager = serviceProvider.GetRequiredService<UserManager<AuthUser>>();
 
-            var adminEmail = Environment.GetEnvironmentVariable("DEV_ADMIN_EMAIL");
-            var adminPassword = Environment.GetEnvironmentVariable("DEV_ADMIN_PASSWORD");
-
-            if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
+            var usersToSeed = new List<(string Email, string Password, string Role)>
             {
-                logger.LogWarning("Default admin credentials are not set in the environment variables. Skipping default admin creation.");
-                return;
+                ("demo-admin@example.com", "Demo123!", Roles.Administrator),
+                ("demo-manager@example.com", "Demo123!", Roles.ProjectManager),
+                ("demo-user@example.com", "Demo123!", Roles.RegularUser)
+            };
+
+            foreach (var (email, password, role) in usersToSeed)
+            {
+                await CreateUserIfNotExistsAsync(userManager, email, password, role, logger);
             }
+        }
 
-            if (await userManager.FindByEmailAsync(adminEmail) == null)
+        private static async Task CreateUserIfNotExistsAsync(
+            UserManager<AuthUser> userManager,
+            string email,
+            string password,
+            string role,
+            ILogger logger)
+        {
+            if (await userManager.FindByEmailAsync(email) == null)
             {
-                var adminUser = new AuthUser
+                var user = new AuthUser
                 {
-                    UserName = adminEmail,
-                    Email = adminEmail,
+                    UserName = email,
+                    Email = email,
                     EmailConfirmed = true
                 };
 
-                var createUserResult = await userManager.CreateAsync(adminUser, adminPassword);
+                var result = await userManager.CreateAsync(user, password);
 
-                if (createUserResult.Succeeded)
+                if (result.Succeeded)
                 {
-                    await userManager.AddToRoleAsync(adminUser, Roles.Administrator);
-                    logger.LogInformation($"Admin user {adminEmail} created successfully.");
+                    await userManager.AddToRoleAsync(user, role);
+                    logger.LogInformation($"User {email} with role {role} created successfully");
                 }
                 else
                 {
-                    var errors = string.Join(", ", createUserResult.Errors.Select(e => e.Description));
-                    logger.LogError($"Error creating admin user: {errors}");
+                    logger.LogError($"Failed to create user {email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
                 }
-            }
-            else
-            {
-                logger.LogInformation($"Admin user {adminEmail} already exists.");
             }
         }
     }

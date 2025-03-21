@@ -35,21 +35,18 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 
         public async Task<Result<TaskItemDto>> Handle(CreateTaskItemCommand request, CancellationToken cancellationToken)
         {
-            // Validate request
             var validationResult = await _validator.ValidateAsync(request, cancellationToken);
             if (!validationResult.IsValid)
             {
                 return Result<TaskItemDto>.Failure(validationResult.Errors.First().ErrorMessage);
             }
 
-            // Verify project exists
             var project = await _projectRepository.GetByIdAsync(request.ProjectId);
             if (project == null)
             {
                 return Result<TaskItemDto>.Failure("Project not found");
             }
 
-            // Verify requesting user is authorized (ProjectAdmin or AssignedUser)
             var requestingUser = await _userService.GetUserByIdAsync(request.RequestingUserId);
             if (requestingUser == null)
             {
@@ -62,21 +59,23 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                 return Result<TaskItemDto>.Failure("User is not authorized to create tasks in this project");
             }
 
-            // Verify assigned user exists and is a RegularUser
             var assignedUser = await _userService.GetUserByIdAsync(request.AssignedUserId);
+            if (assignedUser == null)
+            {
+                return Result<TaskItemDto>.Failure("Assigned user not found");
+            }
+
             if (!await _userService.IsInRoleAsync(assignedUser.Id, Roles.RegularUser))
             {
                 return Result<TaskItemDto>.Failure("Assigned user must be a regular user");
             }
 
-            // Create and save task
             var taskItem = _mapper.Map<TaskItem>(request);
             taskItem.CreatedBy = request.RequestingUserId;
             taskItem.LastModifiedBy = request.RequestingUserId;
 
             await _taskItemRepository.AddAsync(taskItem);
 
-            // Return mapped DTO
             var taskItemDto = _mapper.Map<TaskItemDto>(taskItem);
             taskItemDto.ProjectName = project.Name;
             taskItemDto.AssignedUserName = assignedUser.UserName;

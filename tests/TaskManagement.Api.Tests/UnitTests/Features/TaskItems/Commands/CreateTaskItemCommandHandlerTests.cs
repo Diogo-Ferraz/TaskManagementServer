@@ -131,7 +131,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 .ReturnsAsync(new ValidationResult());
 
             _projectRepositoryMock.Setup(x => x.GetByIdAsync(command.ProjectId))
-                .ReturnsAsync((Project)null);
+                .ReturnsAsync((Project?)null);
 
             var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -210,6 +210,64 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
 
             result.IsSuccess.Should().BeFalse();
             result.Error.Should().Be("Assigned user must be a regular user");
+            _taskItemRepositoryMock.Verify(x => x.AddAsync(It.IsAny<TaskItem>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Handle_WithNoAssignedUser_ShouldReturnFailure()
+        {
+            var command = new CreateTaskItemCommand
+            {
+                Title = "Test Task",
+                ProjectId = Guid.NewGuid(),
+                RequestingUserId = "manager123"
+            };
+
+            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ValidationResult());
+
+            _projectRepositoryMock.Setup(x => x.GetByIdAsync(command.ProjectId))
+                .ReturnsAsync(new Project { Name = "Project123", UserId = "manager123" });
+
+            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.RequestingUserId))
+                .ReturnsAsync(new User { Id = command.RequestingUserId });
+
+            _userServiceMock.Setup(x => x.IsInRoleAsync(command.RequestingUserId, Roles.ProjectManager))
+                .ReturnsAsync(true);
+
+            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.AssignedUserId))
+                .ReturnsAsync((User?)null);
+
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            result.IsSuccess.Should().BeFalse();
+            result.Error.Should().Be("Assigned user not found");
+            _taskItemRepositoryMock.Verify(x => x.AddAsync(It.IsAny<TaskItem>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Handle_WithNoRequestingUser_ShouldReturnFailure()
+        {
+            var command = new CreateTaskItemCommand
+            {
+                Title = "Test Task",
+                ProjectId = Guid.NewGuid(),
+                AssignedUserId = "manager123",
+            };
+
+            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ValidationResult());
+
+            _projectRepositoryMock.Setup(x => x.GetByIdAsync(command.ProjectId))
+                .ReturnsAsync(new Project { Name = "Project123", UserId = "manager123" });
+
+            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.RequestingUserId))
+                .ReturnsAsync((User?)null);
+
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            result.IsSuccess.Should().BeFalse();
+            result.Error.Should().Be("Requesting user not found");
             _taskItemRepositoryMock.Verify(x => x.AddAsync(It.IsAny<TaskItem>()), Times.Never);
         }
 

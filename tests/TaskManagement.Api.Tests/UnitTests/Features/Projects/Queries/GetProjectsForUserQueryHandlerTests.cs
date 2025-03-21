@@ -93,7 +93,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Queries
         [Fact]
         public async Task Handle_NullUserId_ShouldStillCheckAuthorization()
         {
-            string userId = null;
+            string? userId = null;
             var query = new GetProjectsForUserQuery { UserId = userId };
 
             _userServiceMock.Setup(x => x.IsInRoleAsync(userId, Roles.ProjectManager))

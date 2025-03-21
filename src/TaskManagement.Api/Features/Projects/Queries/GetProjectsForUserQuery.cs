@@ -6,6 +6,6 @@ namespace TaskManagement.Api.Features.Projects.Queries
 {
     public class GetProjectsForUserQuery : IRequest<Result<IReadOnlyList<ProjectDto>>>
     {
-        public string UserId { get; set; }
+        public string UserId { get; set; } = string.Empty;
     }
 }

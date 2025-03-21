@@ -49,7 +49,7 @@ namespace TaskManagement.Auth.Infrastructure.Persistence.Configuration
 
             if (app.Environment.IsDevelopment())
             {
-                await services.SeedDefaultAdminAsync(logger);
+                await services.SeedUsersAsync(logger);
             }
         }
     }

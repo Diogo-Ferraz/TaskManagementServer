@@ -30,14 +30,12 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
 
         public async Task<Result<IReadOnlyList<TaskItemDto>>> Handle(GetTasksForProjectQuery request, CancellationToken cancellationToken)
         {
-            // Verify project exists
             var project = await _projectRepository.GetByIdAsync(request.ProjectId);
             if (project == null)
             {
                 return Result<IReadOnlyList<TaskItemDto>>.Failure("Project not found");
             }
 
-            // Verify requesting user is authorized
             var requestingUser = await _userService.GetUserByIdAsync(request.RequestingUserId);
             if (requestingUser == null)
             {

@@ -25,28 +25,24 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 
         public async Task<Result<bool>> Handle(DeleteTaskItemCommand request, CancellationToken cancellationToken)
         {
-            // Validate request
             var validationResult = await _validator.ValidateAsync(request, cancellationToken);
             if (!validationResult.IsValid)
             {
                 return Result<bool>.Failure(validationResult.Errors.First().ErrorMessage);
             }
 
-            // Get task
             var taskItem = await _taskItemRepository.GetByIdAsync(request.Id);
             if (taskItem == null)
             {
                 return Result<bool>.Failure("Task not found");
             }
 
-            // Verify requesting user is authorized
             var requestingUser = await _userService.GetUserByIdAsync(request.RequestingUserId);
             if (requestingUser == null)
             {
                 return Result<bool>.Failure("Requesting user not found");
             }
 
-            // Only the project admin can delete tasks
             if (!await _userService.IsInRoleAsync(requestingUser.Id, Roles.ProjectManager))
             {
                 return Result<bool>.Failure("User is not authorized to delete tasks");

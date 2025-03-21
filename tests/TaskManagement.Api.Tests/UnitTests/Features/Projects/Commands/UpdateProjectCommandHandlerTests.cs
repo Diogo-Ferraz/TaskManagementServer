@@ -95,7 +95,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
             var command = new UpdateProjectCommand { Id = Guid.NewGuid() };
 
             _projectRepositoryMock.Setup(x => x.GetByIdAsync(command.Id))
-                .ReturnsAsync((Project)null);
+                .ReturnsAsync((Project?)null);
 
             var validationResult = new ValidationResult();
             _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))

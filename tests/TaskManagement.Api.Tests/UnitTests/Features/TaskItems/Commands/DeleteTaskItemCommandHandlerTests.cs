@@ -82,7 +82,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 .ReturnsAsync(new ValidationResult());
 
             _taskItemRepositoryMock.Setup(x => x.GetByIdAsync(command.Id))
-                .ReturnsAsync((TaskItem)null);
+                .ReturnsAsync((TaskItem?)null);
 
             var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -153,7 +153,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 .ReturnsAsync(existingTask);
 
             _userServiceMock.Setup(x => x.GetUserByIdAsync(command.RequestingUserId))
-                .ReturnsAsync((User)null);
+                .ReturnsAsync((User?)null);
 
             var result = await _handler.Handle(command, CancellationToken.None);
 

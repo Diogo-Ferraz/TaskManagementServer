@@ -22,9 +22,7 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "DEV_ADMIN_EMAIL": "admin@example.com",
-        "DEV_ADMIN_PASSWORD": "Admin@123"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
     "Container (Dockerfile)": {

@@ -51,6 +51,10 @@ namespace TaskManagement.Api.Features.Projects.Commands.Handlers
 
             var projectDto = _mapper.Map<ProjectDto>(project);
             var user = await _userService.GetUserByIdAsync(request.UserId);
+            if (user == null)
+            {
+                return Result<ProjectDto>.Failure("Requesting user not found");
+            }
             projectDto.UserName = user.UserName ?? string.Empty;
 
             return Result<ProjectDto>.Success(projectDto);

@@ -13,7 +13,7 @@ namespace TaskManagement.Api.Features.Users.Services
             _userManager = userManager;
         }
 
-        public async Task<User> GetUserByIdAsync(string id)
+        public async Task<User?> GetUserByIdAsync(string id)
         {
             return await _userManager.FindByIdAsync(id);
         }

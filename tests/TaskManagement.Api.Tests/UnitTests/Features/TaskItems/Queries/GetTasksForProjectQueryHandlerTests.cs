@@ -143,7 +143,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
             var query = new GetTasksForProjectQuery { ProjectId = projectId, RequestingUserId = userId };
 
             _projectRepositoryMock.Setup(x => x.GetByIdAsync(projectId))
-                .ReturnsAsync((Project)null);
+                .ReturnsAsync((Project?)null);
 
             var result = await _handler.Handle(query, CancellationToken.None);
 
@@ -169,7 +169,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
                 .ReturnsAsync(project);
 
             _userServiceMock.Setup(x => x.GetUserByIdAsync(userId))
-                .ReturnsAsync((User)null);
+                .ReturnsAsync((User?)null);
 
             var result = await _handler.Handle(query, CancellationToken.None);
 

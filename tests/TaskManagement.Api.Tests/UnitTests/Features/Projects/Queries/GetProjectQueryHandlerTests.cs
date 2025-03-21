@@ -65,7 +65,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Queries
             var query = new GetProjectQuery { Id = Guid.NewGuid() };
 
             _projectRepositoryMock.Setup(x => x.GetByIdAsync(query.Id))
-                .ReturnsAsync((Project)null);
+                .ReturnsAsync((Project?)null);
 
             var result = await _handler.Handle(query, CancellationToken.None);
 
