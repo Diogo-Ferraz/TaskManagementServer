@@ -10,11 +10,17 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
             services.AddSwaggerGen(options =>
             {
                 options.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
-                var swaggerSettings = builder.Configuration.GetSection("Swagger").Get<SwaggerSettings>();
-                if (swaggerSettings == null)
+                var clientSettings = builder.Configuration.GetSection("ClientSettings").Get<ClientSettings>();
+                if (clientSettings == null)
                 {
-                    throw new InvalidOperationException("Swagger settings are not configured properly in the appsettings.json file.");
+                    throw new InvalidOperationException("Client settings is not properly set in the appsettings.json file.");
                 }
+                var swaggerClient = clientSettings.Clients.FirstOrDefault(x => x.ClientId == "swagger-client");
+                if (swaggerClient == null)
+                {
+                    throw new InvalidOperationException("The client swagger-client is not configured properly in the appsettings.json file.");
+                }
+
                 options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
                 {
                     Type = SecuritySchemeType.OAuth2,
@@ -22,12 +28,12 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
                     {
                         AuthorizationCode = new OpenApiOAuthFlow
                         {
-                            AuthorizationUrl = new Uri(swaggerSettings.AuthorizationUrl),
-                            TokenUrl = new Uri(swaggerSettings.TokenUrl),
-                            Scopes = swaggerSettings.Scopes
+                            AuthorizationUrl = new Uri(clientSettings.AuthorizationUrl),
+                            TokenUrl = new Uri(clientSettings.TokenUrl),
+                            Scopes = swaggerClient.Scopes
                         }
                     },
-                    Description = swaggerSettings.Description
+                    Description = swaggerClient.Description
                 });
                 options.AddSecurityRequirement(new OpenApiSecurityRequirement
             {

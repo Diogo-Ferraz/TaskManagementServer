@@ -29,7 +29,6 @@ namespace TaskManagement.Auth.Features.Authorization.Services
             foreach (var clientSettings in _clientSettings.Clients)
             {
                 var client = await manager.FindByClientIdAsync(clientSettings.ClientId, cancellationToken);
-
                 if (client != null)
                 {
                     await manager.DeleteAsync(client, cancellationToken);
@@ -41,8 +40,6 @@ namespace TaskManagement.Auth.Features.Authorization.Services
                     ClientSecret = clientSettings.ClientSecret,
                     ConsentType = ConsentTypes.Explicit,
                     DisplayName = clientSettings.DisplayName,
-                    RedirectUris = { new Uri(clientSettings.RedirectUri) },
-                    PostLogoutRedirectUris = { new Uri(clientSettings.PostLogoutRedirectUri) },
                     Permissions =
                     {
                         Permissions.Endpoints.Authorization,
@@ -52,14 +49,29 @@ namespace TaskManagement.Auth.Features.Authorization.Services
                         Permissions.ResponseTypes.Code,
                         Permissions.Scopes.Email,
                         Permissions.Scopes.Profile,
-                        Permissions.Scopes.Roles,
-                        $"{Permissions.Prefixes.Scope}api1"
-                    },
-                    Requirements =
-                    {
-                        Requirements.Features.ProofKeyForCodeExchange
+                        Permissions.Scopes.Roles
                     }
                 };
+
+                foreach (var uri in clientSettings.RedirectUris)
+                {
+                    applicationDescriptor.RedirectUris.Add(new Uri(uri));
+                }
+
+                foreach (var uri in clientSettings.PostLogoutRedirectUris)
+                {
+                    applicationDescriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+                }
+
+                foreach (var extraScope in clientSettings.AllowedScopes)
+                {
+                    applicationDescriptor.Permissions.Add($"{Permissions.Prefixes.Scope}{extraScope}");
+                }
+
+                if (clientSettings.RequirePkce)
+                {
+                    applicationDescriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange);
+                }
 
                 await manager.CreateAsync(applicationDescriptor, cancellationToken);
             }

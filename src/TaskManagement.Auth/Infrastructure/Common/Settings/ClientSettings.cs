@@ -10,7 +10,10 @@
         public string ClientId { get; set; } = string.Empty;
         public string ClientSecret { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
-        public string RedirectUri { get; set; } = string.Empty;
-        public string PostLogoutRedirectUri { get; set; } = string.Empty;
+        public List<string> RedirectUris { get; set; } = [];
+        public List<string> PostLogoutRedirectUris { get; set; } = [];
+        public List<string> AllowedScopes { get; set; } = [];
+        public List<string> AllowedCorsOrigins { get; set; } = [];
+        public bool RequirePkce { get; set; } = true;
     }
 }

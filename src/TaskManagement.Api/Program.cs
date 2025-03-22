@@ -21,6 +21,7 @@ try
 
     builder.Services.AddDatabaseConfiguration(builder.Configuration);
     builder.Services.AddApiConfiguration();
+    builder.Services.AddCorsConfiguration(builder.Configuration);
     builder.AddLoggingConfiguration();
     builder.Services.AddSwaggerConfiguration(builder);
 

@@ -11,14 +11,16 @@ services:
       - OpenIddict__Issuer=https://auth-service:8081/
       - OpenIddict__Audience=task_management_api_dev
       - OpenIddict__EncryptionKey=${OPENIDDICT_ENCRYPTION_KEY:-DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=}
-      - CorsSettings__AllowedOrigins__0=https://localhost:7140
-      - CorsSettings__AllowedOrigins__1=https://api-service:8081
-      - CorsSettings__AllowedOrigins__2=https://localhost:8081
       - ClientSettings__Clients__0__ClientId=swagger-client
-      - ClientSettings__Clients__0__ClientSecret=901564A5-E7FE-42CB-B10D-61EF6A8F3654
+      - ClientSettings__Clients__0__ClientSecret=${SWAGGER_CLIENT_SECRET:-901564A5-E7FE-42CB-B10D-61EF6A8F3654}
       - ClientSettings__Clients__0__DisplayName=Swagger Client application
-      - ClientSettings__Clients__0__RedirectUri=https://localhost:7140/swagger/oauth2-redirect.html
-      - ClientSettings__Clients__0__PostLogoutRedirectUri=https://localhost:7140/callback/logout/local
+      - ClientSettings__Clients__0__RedirectUris__0=https://localhost:7140/swagger/oauth2-redirect.html
+      - ClientSettings__Clients__0__PostLogoutRedirectUris__0=https://localhost:7140/callback/logout/local
+      - ClientSettings__Clients__0__AllowedCorsOrigins__0=https://localhost:7140
+      - ClientSettings__Clients__0__AllowedCorsOrigins__1=https://api-service:8081
+      - ClientSettings__Clients__0__AllowedCorsOrigins__2=https://localhost:8081
+      - ClientSettings__Clients__0__AllowedScopes__0=api1
+      - ClientSettings__Clients__0__RequirePkce=true
     volumes:
       - ${APPDATA:-$HOME/.aspnet}/https:/https:ro
     user: root
@@ -33,14 +35,16 @@ services:
       - OpenIddict__Issuer=https://auth-service:8081/
       - OpenIddict__Audience=task_management_api_dev
       - OpenIddict__EncryptionKey=${OPENIDDICT_ENCRYPTION_KEY:-DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=}
-      - Swagger__ClientId=swagger-client
-      - Swagger__ClientSecret=${SWAGGER_CLIENT_SECRET:-901564A5-E7FE-42CB-B10D-61EF6A8F3654}
-      - Swagger__AuthorizationUrl=https://localhost:7134/connect/authorize
-      - Swagger__TokenUrl=https://localhost:7134/connect/token
-      - Swagger__Scopes__profile=Access your profile information
-      - Swagger__Scopes__email=Access your email address
-      - Swagger__Scopes__roles=Access your role information
-      - Swagger__Description=OAuth2 Authorization Code Flow with PKCE
+      - ClientSettings__AuthorizationUrl=https://localhost:7134/connect/authorize
+      - ClientSettings__TokenUrl=https://localhost:7134/connect/token
+      - ClientSettings__Clients__0__ClientId=swagger-client
+      - ClientSettings__Clients__0__ClientSecret=${SWAGGER_CLIENT_SECRET:-901564A5-E7FE-42CB-B10D-61EF6A8F3654}
+      - ClientSettings__Clients__0__RequirePkce=true
+      - ClientSettings__Clients__0__Description=OAuth2 Authorization Code Flow with PKCE
+      - ClientSettings__Clients__0__Scopes__profile=Access your profile information
+      - ClientSettings__Clients__0__Scopes__email=Access your email address
+      - ClientSettings__Clients__0__Scopes__roles=Access your role information
+      - ClientSettings__Clients__0__AllowedCorsOrigins__0=https://localhost:7140
     volumes:
       - ${APPDATA:-$HOME/.aspnet}/https:/https:ro
     user: root

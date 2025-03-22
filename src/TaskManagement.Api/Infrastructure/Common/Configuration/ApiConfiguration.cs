@@ -24,14 +24,23 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
                 app.UseSwagger();
                 app.UseSwaggerUI(options =>
                 {
-                    var swaggerSettings = app.Configuration.GetSection("Swagger").Get<SwaggerSettings>();
-                    if (swaggerSettings == null)
+                    var clientSettings = app.Configuration.GetSection("ClientSettings").Get<ClientSettings>();
+                    if (clientSettings == null)
                     {
-                        throw new InvalidOperationException("Swagger settings are missing.");
+                        throw new InvalidOperationException("Client settings is not properly set in the appsettings.json file.");
                     }
-                    options.OAuthClientId(swaggerSettings.ClientId);
-                    options.OAuthClientSecret(swaggerSettings.ClientSecret);
-                    options.OAuthUsePkce();
+
+                    var swaggerClient = clientSettings.Clients.FirstOrDefault(x => x.ClientId == "swagger-client");
+                    if (swaggerClient == null)
+                    {
+                        throw new InvalidOperationException("The client swagger-client is not configured properly in the appsettings.json file.");
+                    }
+                    options.OAuthClientId(swaggerClient.ClientId);
+                    options.OAuthClientSecret(swaggerClient.ClientSecret);
+                    if (swaggerClient.RequirePkce)
+                    {
+                        options.OAuthUsePkce();
+                    }
                 });
             }
 
@@ -40,6 +49,7 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
             app.UseExceptionHandler();
             app.UseStatusCodePages();
             app.UseHttpsRedirection();
+            app.UseCors();
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();

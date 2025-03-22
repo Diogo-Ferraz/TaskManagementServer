@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
 using TaskManagement.Auth.Features.Identity.Models;
 using TaskManagement.Shared.Models;
 
