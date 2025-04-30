@@ -1,5 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using TaskManagement.Api.Features.Users.Services.Interfaces;
+﻿using TaskManagement.Api.Features.Users.Services.Interfaces;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace TaskManagement.Api.Features.Users.Services
 {
@@ -13,6 +13,6 @@ namespace TaskManagement.Api.Features.Users.Services
         }
 
         public string Id => _httpContextAccessor.HttpContext?.User?.Claims
-            .FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value ?? string.Empty;
+            .FirstOrDefault(c => c.Type == Claims.Subject)?.Value ?? string.Empty;
     }
 }

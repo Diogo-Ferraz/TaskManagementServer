@@ -21,21 +21,36 @@ services:
       timeout: 3s
     restart: unless-stopped
 
+  caddy:
+    container_name: caddy-prox
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - taskmanagement-network
+    depends_on:
+      - auth-service
+      - api-service
+
   auth-service:
     build:
       context: .
       dockerfile: src/TaskManagement.Auth/Dockerfile
       args:
         - BUILD_CONFIGURATION=${BUILD_CONFIGURATION:-Release}
-    ports:
-      - "7134:8081"
     depends_on:
       sqlserver:
         condition: service_healthy
     networks:
       - taskmanagement-network
     healthcheck:
-      test: ["CMD", "curl", "-k", "https://localhost:8081/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -48,8 +63,6 @@ services:
       dockerfile: src/TaskManagement.Api/Dockerfile
       args:
         - BUILD_CONFIGURATION=${BUILD_CONFIGURATION:-Release}
-    ports:
-      - "7140:8081"
     depends_on:
       sqlserver:
         condition: service_healthy
@@ -58,7 +71,7 @@ services:
     networks:
       - taskmanagement-network
     healthcheck:
-      test: ["CMD", "curl", "-k", "https://localhost:8081/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -71,4 +84,6 @@ networks:
 
 volumes:
   sqlserver-data:
+  caddy_data:
+  caddy_config:
     driver: local

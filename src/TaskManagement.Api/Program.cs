@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
 using TaskManagement.Api.Features.Projects.Configuration;
@@ -19,13 +20,21 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+
     builder.Services.AddDatabaseConfiguration(builder.Configuration);
     builder.Services.AddApiConfiguration();
     builder.Services.AddCorsConfiguration(builder.Configuration);
     builder.AddLoggingConfiguration();
     builder.Services.AddSwaggerConfiguration(builder);
 
-    builder.Services.AddOpenIddictValidation(builder);
+    builder.Services.AddOpenIddictValidation(builder.Configuration, builder.Environment);
 
     builder.Services.AddProjectsFeature();
     builder.Services.AddTasksFeature();

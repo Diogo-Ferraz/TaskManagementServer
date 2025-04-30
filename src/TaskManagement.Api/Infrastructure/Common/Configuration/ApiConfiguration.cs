@@ -19,6 +19,9 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
 
         public static WebApplication ConfigureRequestPipeline(this WebApplication app, IWebHostEnvironment env)
         {
+            app.UseForwardedHeaders();
+            app.UseRouting();
+
             if (env.IsDevelopment())
             {
                 app.UseSwagger();
@@ -48,7 +51,7 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
             app.UseSerilogRequestLogging();
             app.UseExceptionHandler();
             app.UseStatusCodePages();
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
             app.UseCors();
             app.UseAuthentication();
             app.UseAuthorization();

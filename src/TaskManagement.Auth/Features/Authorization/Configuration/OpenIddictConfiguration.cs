@@ -50,7 +50,7 @@ namespace TaskManagement.Auth.Features.Authorization.Configuration
                     options.SetAuthorizationEndpointUris("connect/authorize")
                        .SetEndSessionEndpointUris("connect/logout")
                        .SetTokenEndpointUris("connect/token")
-                       .SetIssuer(openIddictSettings.Issuer)
+                       .SetIssuer(new Uri(openIddictSettings.Issuer))
                        .SetUserInfoEndpointUris("connect/userinfo");
 
                     options.RegisterScopes(Scopes.Email, Scopes.Profile, Scopes.Roles);

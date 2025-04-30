@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
 using TaskManagement.Auth.Features.Authorization.Configuration;
@@ -16,6 +17,14 @@ try
     Log.Information("Starting web host");
 
     var builder = WebApplication.CreateBuilder(args);
+
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
 
     builder.Services.AddDatabaseConfiguration(builder.Configuration);
     builder.Services.AddApiConfiguration();

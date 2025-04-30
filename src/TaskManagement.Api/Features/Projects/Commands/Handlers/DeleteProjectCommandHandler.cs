@@ -1,6 +1,5 @@
 ﻿using FluentValidation;
 using MediatR;
-using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Models;

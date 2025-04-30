@@ -4,39 +4,34 @@ services:
   auth-service:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=https://+:8081;http://+:8080
-      - ASPNETCORE_Kestrel__Certificates__Default__Password=${CERT_PASSWORD:-mypassword123}
-      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__TaskManagementDbConnection=Server=sqlserver,1433;Database=TaskManagementDb;User Id=sa;Password=${SQL_PASSWORD:-Passw0rd!1234};TrustServerCertificate=True;
-      - OpenIddict__Issuer=https://auth-service:8081/
+      - OpenIddict__Issuer=https://auth.localhost
       - OpenIddict__Audience=task_management_api_dev
       - OpenIddict__EncryptionKey=${OPENIDDICT_ENCRYPTION_KEY:-DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=}
       - ClientSettings__Clients__0__ClientId=swagger-client
       - ClientSettings__Clients__0__ClientSecret=${SWAGGER_CLIENT_SECRET:-901564A5-E7FE-42CB-B10D-61EF6A8F3654}
       - ClientSettings__Clients__0__DisplayName=Swagger Client application
-      - ClientSettings__Clients__0__RedirectUris__0=https://localhost:7140/swagger/oauth2-redirect.html
-      - ClientSettings__Clients__0__PostLogoutRedirectUris__0=https://localhost:7140/callback/logout/local
-      - ClientSettings__Clients__0__AllowedCorsOrigins__0=https://localhost:7140
+      - ClientSettings__Clients__0__RedirectUris__0=https://api.localhost/swagger/oauth2-redirect.html
+      - ClientSettings__Clients__0__PostLogoutRedirectUris__0=https://api.localhost/callback/logout/local
+      - ClientSettings__Clients__0__AllowedCorsOrigins__0=https://api.localhost
       - ClientSettings__Clients__0__AllowedCorsOrigins__1=https://api-service:8081
       - ClientSettings__Clients__0__AllowedCorsOrigins__2=https://localhost:8081
       - ClientSettings__Clients__0__AllowedScopes__0=api1
       - ClientSettings__Clients__0__RequirePkce=true
-    volumes:
-      - ${APPDATA:-$HOME/.aspnet}/https:/https:ro
-    user: root
 
   api-service:
+    extra_hosts:
+      - "auth.localhost:host-gateway"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=https://+:8081;http://+:8080
-      - ASPNETCORE_Kestrel__Certificates__Default__Password=${CERT_PASSWORD:-mypassword123}
-      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__TaskManagementDbConnection=Server=sqlserver,1433;Database=TaskManagementDb;User Id=sa;Password=${SQL_PASSWORD:-Passw0rd!1234};TrustServerCertificate=True;
-      - OpenIddict__Issuer=https://auth-service:8081/
+      - OpenIddict__Issuer=https://auth.localhost
       - OpenIddict__Audience=task_management_api_dev
       - OpenIddict__EncryptionKey=${OPENIDDICT_ENCRYPTION_KEY:-DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=}
-      - ClientSettings__AuthorizationUrl=https://localhost:7134/connect/authorize
-      - ClientSettings__TokenUrl=https://localhost:7134/connect/token
+      - ClientSettings__AuthorizationUrl=https://auth.localhost/connect/authorize
+      - ClientSettings__TokenUrl=https://auth.localhost/connect/token
       - ClientSettings__Clients__0__ClientId=swagger-client
       - ClientSettings__Clients__0__ClientSecret=${SWAGGER_CLIENT_SECRET:-901564A5-E7FE-42CB-B10D-61EF6A8F3654}
       - ClientSettings__Clients__0__RequirePkce=true
@@ -44,7 +39,4 @@ services:
       - ClientSettings__Clients__0__Scopes__profile=Access your profile information
       - ClientSettings__Clients__0__Scopes__email=Access your email address
       - ClientSettings__Clients__0__Scopes__roles=Access your role information
-      - ClientSettings__Clients__0__AllowedCorsOrigins__0=https://localhost:7140
-    volumes:
-      - ${APPDATA:-$HOME/.aspnet}/https:/https:ro
-    user: root
+      - ClientSettings__Clients__0__AllowedCorsOrigins__0=https://api.localhost

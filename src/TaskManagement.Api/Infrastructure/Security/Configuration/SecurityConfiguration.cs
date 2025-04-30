@@ -6,29 +6,40 @@ namespace TaskManagement.Api.Infrastructure.Security.Configuration
 {
     public static class SecurityConfiguration
     {
-        public static IServiceCollection AddOpenIddictValidation(this IServiceCollection services, WebApplicationBuilder builder)
+        public static IServiceCollection AddOpenIddictValidation(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            IHostEnvironment environment)
         {
-            var openIddictSettings = builder.Configuration.GetSection("OpenIddict").Get<OpenIddictSettings>();
-            if (openIddictSettings == null)
+            var openIddictSettings = configuration.GetSection("OpenIddict").Get<OpenIddictSettings>();
+            if (openIddictSettings == null || string.IsNullOrEmpty(openIddictSettings.Issuer) || string.IsNullOrEmpty(openIddictSettings.EncryptionKey)
+                || string.IsNullOrEmpty(openIddictSettings.Audience))
             {
-                throw new InvalidOperationException("OpenIddict settings are missing.");
+                throw new InvalidOperationException("OpenIddict settings (Issuer, Audience, EncryptionKey) are missing or incomplete in configuration.");
+            }
+
+            if (!Uri.TryCreate(openIddictSettings.Issuer, UriKind.Absolute, out var publicIssuerUri))
+            {
+                throw new InvalidOperationException($"Invalid OpenIddict Issuer URI configured: '{openIddictSettings.Issuer}'");
             }
 
             services.AddOpenIddict()
                 .AddValidation(options =>
                 {
-                    options.SetIssuer(openIddictSettings.Issuer);
+                    options.SetIssuer(publicIssuerUri);
                     options.AddAudiences(openIddictSettings.Audience);
                     options.AddEncryptionKey(new SymmetricSecurityKey(
                         Convert.FromBase64String(openIddictSettings.EncryptionKey)));
                     options.UseSystemNetHttp()
                     .ConfigureHttpClientHandler(handler =>
                     {
-                        if (builder.Environment.IsDevelopment())
+                        if (environment.IsDevelopment())
                         {
-                            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                            handler.ServerCertificateCustomValidationCallback =
+                                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
                         }
                     });
+
                     options.UseAspNetCore();
                 });
 

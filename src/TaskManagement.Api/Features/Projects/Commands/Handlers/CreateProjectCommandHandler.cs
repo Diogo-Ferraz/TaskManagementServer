@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using FluentValidation;
 using MediatR;
-using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Features.Projects.Repositories.Interfaces;

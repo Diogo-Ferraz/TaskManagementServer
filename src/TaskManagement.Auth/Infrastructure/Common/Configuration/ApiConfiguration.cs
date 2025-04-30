@@ -13,6 +13,8 @@ namespace TaskManagement.Auth.Infrastructure.Common.Configuration
 
         public static WebApplication ConfigureRequestPipeline(this WebApplication app, IWebHostEnvironment environment)
         {
+            app.UseForwardedHeaders();
+
             if (environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -21,12 +23,10 @@ namespace TaskManagement.Auth.Infrastructure.Common.Configuration
             else
             {
                 app.UseStatusCodePagesWithReExecute("~/error");
-                app.UseHsts();
             }
 
             app.MapHealthChecks("/health");
             app.UseSerilogRequestLogging();
-            app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseCors();
             app.UseRouting();
