@@ -36,9 +36,9 @@ namespace TaskManagement.Auth.Tests.TestHelpers.Data
             public const string Email = "authorized@example.com";
             public const string Password = "StrongPassword@123";
 
-            public static AuthUser Create()
+            public static ApplicationUser Create()
             {
-                return new AuthUser
+                return new ApplicationUser
                 {
                     UserName = Email,
                     Email = Email,

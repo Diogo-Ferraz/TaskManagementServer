@@ -9,20 +9,25 @@ namespace TaskManagement.Api.Features.TaskItems.Mappings
     {
         public TaskItemMappingProfile()
         {
-            CreateMap<TaskItem, TaskItemDto>()
-                .ForMember(
-                    dest => dest.ProjectName,
-                    opt => opt.MapFrom(src => src.Project.Name))
-                .ForMember(
-                    dest => dest.AssignedUserName,
-                    opt => opt.MapFrom(src => src.AssignedUser.UserName));
+            CreateMap<TaskItem, TaskItemDto>();
 
             CreateMap<CreateTaskItemCommand, TaskItem>()
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()));
+                 .ForMember(dest => dest.Id, opt => opt.Ignore())
+                 .ForMember(dest => dest.Project, opt => opt.Ignore())
+                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                 .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+                 .ForMember(dest => dest.LastModifiedAt, opt => opt.Ignore())
+                 .ForMember(dest => dest.LastModifiedByUserId, opt => opt.Ignore());
+
 
             CreateMap<UpdateTaskItemCommand, TaskItem>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.ProjectId, opt => opt.Ignore());
+                 .ForMember(dest => dest.Id, opt => opt.Ignore())
+                 .ForMember(dest => dest.ProjectId, opt => opt.Ignore())
+                 .ForMember(dest => dest.Project, opt => opt.Ignore())
+                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                 .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+                 .ForMember(dest => dest.LastModifiedAt, opt => opt.Ignore())
+                 .ForMember(dest => dest.LastModifiedByUserId, opt => opt.Ignore());
         }
     }
 }

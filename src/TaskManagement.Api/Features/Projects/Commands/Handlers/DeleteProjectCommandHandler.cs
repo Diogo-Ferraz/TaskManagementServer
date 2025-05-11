@@ -1,49 +1,43 @@
-﻿using FluentValidation;
-using MediatR;
-using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
+﻿using MediatR;
+using Microsoft.EntityFrameworkCore;
+using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Models;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Features.Projects.Commands.Handlers
 {
-    public class DeleteProjectCommandHandler : IRequestHandler<DeleteProjectCommand, Result<bool>>
+    public class DeleteProjectCommandHandler : IRequestHandler<DeleteProjectCommand>
     {
-        private readonly IProjectRepository _projectRepository;
-        private readonly IUserService _userService;
-        private readonly IValidator<DeleteProjectCommand> _validator;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly ICurrentUserService _currentUserService;
 
-        public DeleteProjectCommandHandler(
-            IProjectRepository projectRepository,
-            IUserService userService,
-            IValidator<DeleteProjectCommand> validator)
+        public DeleteProjectCommandHandler(TaskManagementDbContext dbContext, ICurrentUserService currentUserService)
         {
-            _projectRepository = projectRepository;
-            _userService = userService;
-            _validator = validator;
+            _dbContext = dbContext;
+            _currentUserService = currentUserService;
         }
 
-        public async Task<Result<bool>> Handle(DeleteProjectCommand request, CancellationToken cancellationToken)
+        public async Task Handle(DeleteProjectCommand request, CancellationToken cancellationToken)
         {
-            var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-            if (!validationResult.IsValid)
-            {
-                return Result<bool>.Failure(validationResult.Errors.First().ErrorMessage);
-            }
+            var currentUserId = _currentUserService.Id;
+            if (string.IsNullOrEmpty(currentUserId)) throw new UnauthorizedAccessException();
 
-            var project = await _projectRepository.GetByIdAsync(request.Id);
+            var project = await _dbContext.Projects
+                .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
+
             if (project == null)
             {
-                return Result<bool>.Failure("Project not found");
+                throw new NotFoundException(nameof(Project), request.Id);
             }
 
-            if (!await _userService.IsInRoleAsync(request.UserId, Roles.ProjectManager) || project.UserId != request.UserId)
+            if (project.OwnerUserId != currentUserId)
             {
-                return Result<bool>.Failure("User is not authorized to delete this project");
+                throw new ForbiddenAccessException("User is not authorized to delete this project.");
             }
 
-            await _projectRepository.DeleteAsync(project);
-            return Result<bool>.Success(true);
+            _dbContext.Projects.Remove(project);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 }

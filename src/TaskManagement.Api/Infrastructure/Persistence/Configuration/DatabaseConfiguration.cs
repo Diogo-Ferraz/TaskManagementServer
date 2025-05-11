@@ -1,8 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using TaskManagement.Api.Features.Users.Models;
-using TaskManagement.Api.Infrastructure.Repositories;
-using TaskManagement.Api.Infrastructure.Repositories.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
 {
@@ -18,12 +14,6 @@ namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
                         maxRetryDelay: TimeSpan.FromSeconds(10),
                         errorNumbersToAdd: null));
             });
-
-            services.AddIdentity<User, IdentityRole>()
-                .AddEntityFrameworkStores<TaskManagementDbContext>()
-                .AddDefaultTokenProviders();
-
-            services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
             return services;
         }

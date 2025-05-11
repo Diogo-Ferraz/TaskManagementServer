@@ -1,71 +1,57 @@
 ﻿using AutoMapper;
-using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
-using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Models;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.Projects.Commands.Handlers
 {
-    public class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectCommand, Result<ProjectDto>>
+    public class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectCommand, ProjectDto>
     {
-        private readonly IProjectRepository _projectRepository;
-        private readonly IUserService _userService;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
-        private readonly IValidator<UpdateProjectCommand> _validator;
 
         public UpdateProjectCommandHandler(
-            IProjectRepository projectRepository,
-            IUserService userService,
-            IMapper mapper,
-            IValidator<UpdateProjectCommand> validator)
+            TaskManagementDbContext dbContext,
+            ICurrentUserService currentUserService,
+            IMapper mapper)
         {
-            _projectRepository = projectRepository;
-            _userService = userService;
+            _dbContext = dbContext;
+            _currentUserService = currentUserService;
             _mapper = mapper;
-            _validator = validator;
         }
 
-        public async Task<Result<ProjectDto>> Handle(UpdateProjectCommand request, CancellationToken cancellationToken)
+        public async Task<ProjectDto> Handle(UpdateProjectCommand request, CancellationToken cancellationToken)
         {
-            var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-            if (!validationResult.IsValid)
+            var currentUserId = _currentUserService.Id;
+            if (string.IsNullOrEmpty(currentUserId))
             {
-                return Result<ProjectDto>.Failure(validationResult.Errors.First().ErrorMessage);
+                throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var project = await _projectRepository.GetByIdAsync(request.Id);
+            var project = await _dbContext.Projects
+                .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
+
             if (project == null)
             {
-                return Result<ProjectDto>.Failure("Project not found");
+                throw new NotFoundException(nameof(Project), request.Id);
             }
 
-            if (!await _userService.IsInRoleAsync(request.UserId, Roles.ProjectManager))
+            if (project.OwnerUserId != currentUserId && !_currentUserService.IsInRole(Roles.Administrator))
             {
-                return Result<ProjectDto>.Failure("User is not authorized to update projects");
-            }
-
-            if (project.UserId != request.UserId)
-            {
-                return Result<ProjectDto>.Failure("User is not authorized to update this project");
+                throw new ForbiddenAccessException("User is not authorized to update this project.");
             }
 
             _mapper.Map(request, project);
-            project.LastModifiedBy = request.UserId;
 
-            await _projectRepository.UpdateAsync(project);
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
-            var projectDto = _mapper.Map<ProjectDto>(project);
-            var user = await _userService.GetUserByIdAsync(request.UserId);
-            if (user == null)
-            {
-                return Result<ProjectDto>.Failure("User not found");
-            }
-            projectDto.UserName = user.UserName ?? string.Empty;
-
-            return Result<ProjectDto>.Success(projectDto);
+            return _mapper.Map<ProjectDto>(project);
         }
     }
 }

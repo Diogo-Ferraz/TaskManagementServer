@@ -1,109 +1,122 @@
 ﻿using AutoMapper;
-using FluentAssertions;
+using FluentAssertions; // For assertions
+using Microsoft.EntityFrameworkCore; // For InMemory specifics
 using Moq;
+using TaskManagement.Api.Features.Projects.Mappings;
 using TaskManagement.Api.Features.Projects.Models;
-using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Features.Projects.Queries;
 using TaskManagement.Api.Features.Projects.Queries.Handlers;
-using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
+using TaskManagement.Api.Features.TaskItems.Mappings;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Persistence;
+using TaskManagement.Api.Infrastructure.Persistence.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Queries
 {
-    public class GetProjectsForUserQueryHandlerTests
+    public class GetProjectsForUserQueryHandlerTests : IDisposable
     {
-        private readonly Mock<IProjectRepository> _projectRepositoryMock;
-        private readonly Mock<IUserService> _userServiceMock;
-        private readonly Mock<IMapper> _mapperMock;
-        private readonly GetProjectsForAdminQueryHandler _handler;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly IMapper _mapper;
+        private readonly Mock<ICurrentUserService> _mockCurrentUser;
+        private readonly GetProjectsForUserQueryHandler _handler;
+
+        private readonly string _testUserId = "user-123";
+        private readonly Guid _ownedProjectId = Guid.NewGuid();
+        private readonly Guid _memberProjectId = Guid.NewGuid();
+        private readonly Guid _otherProjectId = Guid.NewGuid();
 
         public GetProjectsForUserQueryHandlerTests()
         {
-            _projectRepositoryMock = new Mock<IProjectRepository>();
-            _userServiceMock = new Mock<IUserService>();
-            _mapperMock = new Mock<IMapper>();
+            var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
+                .UseInMemoryDatabase(databaseName: $"TestDb_GetProjectsForUser_{Guid.NewGuid()}")
+                .Options;
 
-            _handler = new GetProjectsForAdminQueryHandler(
-                _projectRepositoryMock.Object,
-                _userServiceMock.Object,
-                _mapperMock.Object
-            );
+            _dbContext = new TaskManagementDbContext(options, null);
+
+            var mappingConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.AddProfile<ProjectMappingProfile>();
+                cfg.AddProfile<TaskItemMappingProfile>();
+            });
+            _mapper = mappingConfig.CreateMapper();
+
+            _mockCurrentUser = new Mock<ICurrentUserService>();
+
+            SeedDatabase();
+
+            _handler = new GetProjectsForUserQueryHandler(_dbContext, _mockCurrentUser.Object, _mapper);
         }
 
-        [Fact]
-        public async Task Handle_ShouldReturnUserProjects()
+        private void SeedDatabase()
         {
-            var userId = "user123";
-            var query = new GetProjectsForUserQuery { UserId = userId };
-
             var projects = new List<Project>
             {
-                new Project { Id = Guid.NewGuid(), Name = "Project 1", UserId = userId },
-                new Project { Id = Guid.NewGuid(), Name = "Project 2", UserId = userId }
+                new Project { Id = _ownedProjectId, Name = "A Owned Project", OwnerUserId = _testUserId, CreatedAt = DateTime.UtcNow },
+                new Project { Id = _memberProjectId, Name = "B Member Project", OwnerUserId = "other-owner", CreatedAt = DateTime.UtcNow.AddMinutes(1),
+                              Members = new List<ProjectMember> { new ProjectMember { UserId = _testUserId, ProjectId = _memberProjectId } } },
+                new Project { Id = _otherProjectId, Name = "C Other Project", OwnerUserId = "other-owner", CreatedAt = DateTime.UtcNow.AddMinutes(2) }
             };
-
-            var projectDtos = projects.Select(p => new ProjectDto
-            {
-                Id = p.Id,
-                Name = p.Name,
-                UserId = p.UserId,
-                UserName = "testuser"
-            }).ToList();
-
-            _projectRepositoryMock.Setup(x => x.GetProjectsByUserIdAsync(userId))
-                .ReturnsAsync(projects);
-
-            _mapperMock.Setup(x => x.Map<IReadOnlyList<ProjectDto>>(projects))
-                .Returns(projectDtos);
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(query.UserId, Roles.ProjectManager))
-                .ReturnsAsync(true);
-
-            var result = await _handler.Handle(query, CancellationToken.None);
-
-            result.IsSuccess.Should().BeTrue();
-            result.Value.Should().BeEquivalentTo(projectDtos);
+            _dbContext.Projects.AddRange(projects);
+            _dbContext.SaveChanges();
         }
 
         [Fact]
-        public async Task Handle_EmptyProjectsList_ShouldReturnEmptyCollection()
+        public async Task Handle_ShouldReturnOwnedAndMemberProjects_WhenUserIsAuthenticated()
         {
-            var userId = "user123";
-            var query = new GetProjectsForUserQuery { UserId = userId };
+            // Arrange
+            var query = new GetProjectsForUserQuery();
+            _mockCurrentUser.Setup(u => u.Id).Returns(_testUserId);
 
-            var emptyProjects = new List<Project>();
-            var emptyDtos = new List<ProjectDto>();
-
-            _projectRepositoryMock.Setup(x => x.GetProjectsByUserIdAsync(userId))
-                .ReturnsAsync(emptyProjects);
-
-            _mapperMock.Setup(x => x.Map<IReadOnlyList<ProjectDto>>(emptyProjects))
-                .Returns(emptyDtos);
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(query.UserId, Roles.ProjectManager))
-                .ReturnsAsync(true);
-
+            // Act
             var result = await _handler.Handle(query, CancellationToken.None);
 
-            result.IsSuccess.Should().BeTrue();
-            result.Value.Should().BeEmpty();
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(2);
+
+            result.Select(p => p.Id).Should().ContainInOrder(_ownedProjectId, _memberProjectId);
+            result.First(p => p.Id == _ownedProjectId).Name.Should().Be("A Owned Project");
+            result.First(p => p.Id == _memberProjectId).Name.Should().Be("B Member Project");
+
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
         }
 
         [Fact]
-        public async Task Handle_NullUserId_ShouldStillCheckAuthorization()
+        public async Task Handle_ShouldReturnEmptyList_WhenUserHasNoProjects()
         {
-            string? userId = null;
-            var query = new GetProjectsForUserQuery { UserId = userId };
+            // Arrange
+            var query = new GetProjectsForUserQuery();
+            var newUser = "new-user-id";
+            _mockCurrentUser.Setup(u => u.Id).Returns(newUser);
 
-            _userServiceMock.Setup(x => x.IsInRoleAsync(userId, Roles.ProjectManager))
-                .ReturnsAsync(false);
-
+            // Act
             var result = await _handler.Handle(query, CancellationToken.None);
 
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("User is not authorized to view projects");
-            _userServiceMock.Verify(x => x.IsInRoleAsync(userId, Roles.ProjectManager), Times.Once);
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().BeEmpty();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldThrowUnauthorizedAccessException_WhenUserIsNotAuthenticated()
+        {
+            // Arrange
+            var query = new GetProjectsForUserQuery();
+            _mockCurrentUser.Setup(u => u.Id).Returns((string?)null);
+
+            // Act
+            Func<Task> act = async () => await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
+        }
+
+        public void Dispose()
+        {
+            _dbContext.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

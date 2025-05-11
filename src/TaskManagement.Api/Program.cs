@@ -1,9 +1,12 @@
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
 using TaskManagement.Api.Features.Projects.Configuration;
 using TaskManagement.Api.Features.TaskItems.Configuration;
 using TaskManagement.Api.Features.Users.Configuration;
+using TaskManagement.Api.Infrastructure.Common.Behaviors;
 using TaskManagement.Api.Infrastructure.Common.Configuration;
 using TaskManagement.Api.Infrastructure.Persistence.Configuration;
 using TaskManagement.Api.Infrastructure.Security.Configuration;
@@ -39,6 +42,9 @@ try
     builder.Services.AddProjectsFeature();
     builder.Services.AddTasksFeature();
     builder.Services.AddUserFeature();
+
+    builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
     var app = builder.Build();
 

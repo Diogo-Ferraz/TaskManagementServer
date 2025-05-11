@@ -5,8 +5,6 @@ using OpenIddict.Validation.AspNetCore;
 using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Features.Projects.Queries;
-using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.Projects.Controllers
 {
@@ -17,91 +15,74 @@ namespace TaskManagement.Api.Features.Projects.Controllers
     {
         private readonly IMediator _mediator;
         private readonly ILogger<ProjectsController> _logger;
-        private readonly ICurrentUserService _currentUser;
 
-        public ProjectsController(IMediator mediator, ILogger<ProjectsController> logger, ICurrentUserService currentUser)
+        public ProjectsController(IMediator mediator, ILogger<ProjectsController> logger)
         {
             _mediator = mediator;
             _logger = logger;
-            _currentUser = currentUser;
         }
 
         [HttpPost]
-        [Authorize(Roles = Roles.ProjectManager)]
         [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Create([FromBody] CreateProjectCommand command)
         {
-            _logger.LogInformation("Creating new project with name: {ProjectName}", command.Name);
-            command.UserId = _currentUser.Id;
-            var result = await _mediator.Send(command);
-
-            if (!result.IsSuccess)
-                return Problem(result.Error);
-
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = result.Value.Id },
-                result.Value);
+            _logger.LogInformation("API: Creating new project with name: {ProjectName}", command.Name);
+            var createdProjectDto = await _mediator.Send(command);
+            return CreatedAtAction(nameof(GetById), new { id = createdProjectDto.Id }, createdProjectDto);
         }
 
-        [HttpPut("{id}")]
-        [Authorize(Roles = Roles.ProjectManager)]
+        [HttpPut("{id:guid}")]
         [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectCommand command)
         {
-            _logger.LogInformation("Updating project with ID: {ProjectId}", id);
+            _logger.LogInformation("API: Updating project with ID: {ProjectId}", id);
             if (id != command.Id)
-                return BadRequest();
-
-            command.UserId = _currentUser.Id;
-            var result = await _mediator.Send(command);
-            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+            {
+                return Problem(statusCode: StatusCodes.Status400BadRequest, detail: "Route ID does not match command ID.");
+            }
+            var updatedProjectDto = await _mediator.Send(command);
+            return Ok(updatedProjectDto);
         }
 
-        [HttpDelete("{id}")]
-        [Authorize(Roles = Roles.ProjectManager)]
+        [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(Guid id)
         {
-            _logger.LogInformation("Deleting project with ID: {ProjectId}", id);
-            var command = new DeleteProjectCommand
-            {
-                Id = id,
-                UserId = _currentUser.Id
-            };
-            var result = await _mediator.Send(command);
-            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+            _logger.LogInformation("API: Deleting project with ID: {ProjectId}", id);
+            await _mediator.Send(new DeleteProjectCommand { Id = id });
+            return NoContent();
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:guid}")]
         [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(Guid id)
         {
-            _logger.LogInformation("Retrieving project with ID: {ProjectId}", id);
-            var result = await _mediator.Send(new GetProjectQuery { Id = id });
-            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+            _logger.LogInformation("API: Retrieving project with ID: {ProjectId}", id);
+            var projectDto = await _mediator.Send(new GetProjectQuery { Id = id });
+            return Ok(projectDto);
         }
 
-        [HttpGet("user")]
-        [Authorize(Roles = Roles.ProjectManager)]
+        [HttpGet("my-projects")]
         [ProducesResponseType(typeof(IReadOnlyList<ProjectDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetUserProjects()
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetMyProjects()
         {
-            var userId = _currentUser.Id;
-            _logger.LogInformation("Retrieving all projects for user: {userId}", userId);
-            var result = await _mediator.Send(new GetProjectsForUserQuery { UserId = userId });
-            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+            _logger.LogInformation("API: Retrieving projects for current user.");
+            var projectDtos = await _mediator.Send(new GetProjectsForUserQuery());
+            return Ok(projectDtos);
         }
     }
 }

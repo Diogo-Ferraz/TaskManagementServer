@@ -1,317 +1,164 @@
 ﻿using AutoMapper;
 using FluentAssertions;
-using FluentValidation;
-using FluentValidation.Results;
+using Microsoft.EntityFrameworkCore;
 using Moq;
+using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.TaskItems.Commands;
 using TaskManagement.Api.Features.TaskItems.Commands.Handlers;
+using TaskManagement.Api.Features.TaskItems.Mappings;
 using TaskManagement.Api.Features.TaskItems.Models;
-using TaskManagement.Api.Features.TaskItems.Models.DTOs;
-using TaskManagement.Api.Features.TaskItems.Repositories.Interfaces;
-using TaskManagement.Api.Features.Users.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
+using TaskStatus = TaskManagement.Api.Features.TaskItems.Models.TaskStatus;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
 {
-    public class UpdateTaskItemCommandHandlerTests
+    public class UpdateTaskItemCommandHandlerTests : IDisposable
     {
-        private readonly Mock<ITaskItemRepository> _taskItemRepositoryMock;
-        private readonly Mock<IUserService> _userServiceMock;
-        private readonly Mock<IMapper> _mapperMock;
-        private readonly Mock<IValidator<UpdateTaskItemCommand>> _validatorMock;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly IMapper _mapper;
+        private readonly Mock<ICurrentUserService> _mockCurrentUser;
         private readonly UpdateTaskItemCommandHandler _handler;
+
+        private readonly Guid _taskIdToUpdate = Guid.NewGuid();
+        private readonly Guid _projectId = Guid.NewGuid();
+        private readonly string _projectOwnerId = "project-owner-123";
+        private readonly string _taskAssigneeId = "task-assignee-456";
+        private readonly string _otherUserId = "other-user-789";
+        private TaskItem _initialTaskState;
 
         public UpdateTaskItemCommandHandlerTests()
         {
-            _taskItemRepositoryMock = new Mock<ITaskItemRepository>();
-            _userServiceMock = new Mock<IUserService>();
-            _mapperMock = new Mock<IMapper>();
-            _validatorMock = new Mock<IValidator<UpdateTaskItemCommand>>();
+            var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
+                .UseInMemoryDatabase(databaseName: $"TestDb_UpdateTaskItem_{Guid.NewGuid()}")
+                .Options;
+            _mockCurrentUser = new Mock<ICurrentUserService>();
+            _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
 
-            _handler = new UpdateTaskItemCommandHandler(
-                _taskItemRepositoryMock.Object,
-                _userServiceMock.Object,
-                _mapperMock.Object,
-                _validatorMock.Object
-            );
+            var mappingConfig = new MapperConfiguration(cfg => cfg.AddProfile<TaskItemMappingProfile>());
+            _mapper = mappingConfig.CreateMapper();
+
+            _initialTaskState = SeedDatabase();
+
+            _handler = new UpdateTaskItemCommandHandler(_dbContext, _mockCurrentUser.Object, _mapper);
+        }
+
+        private TaskItem SeedDatabase()
+        {
+            var project = new Project { Id = _projectId, Name = "Project For Tasks", OwnerUserId = _projectOwnerId, CreatedAt = DateTime.UtcNow, CreatedByUserId = _projectOwnerId, LastModifiedAt = DateTime.UtcNow, LastModifiedByUserId = _projectOwnerId };
+            var task = new TaskItem
+            {
+                Id = _taskIdToUpdate,
+                Title = "Original Task Title",
+                Description = "Original Desc",
+                ProjectId = _projectId,
+                Project = project,
+                AssignedUserId = _taskAssigneeId,
+                Status = TaskStatus.Todo,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = _projectOwnerId,
+                LastModifiedAt = DateTime.UtcNow,
+                LastModifiedByUserId = _projectOwnerId
+            };
+            _dbContext.Projects.Add(project);
+            _dbContext.TaskItems.Add(task);
+            _dbContext.SaveChanges();
+            return task;
         }
 
         [Fact]
-        public async Task Handle_WithValidRequestFromProjectManager_ShouldReturnSuccessResult()
+        public async Task Handle_ShouldUpdateTaskItem_WhenUserIsProjectOwner()
         {
-            var taskId = Guid.NewGuid();
-            var command = new UpdateTaskItemCommand
-            {
-                Id = taskId,
-                Title = "Updated Task",
-                Description = "Updated Description",
-                Status = Api.Features.TaskItems.Models.TaskStatus.InProgress,
-                AssignedUserId = "user123",
-                RequestingUserId = "manager123",
-                DueDate = DateTime.UtcNow.AddDays(10)
-            };
+            // Arrange
+            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Updated by Owner", Status = TaskStatus.InProgress };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_projectOwnerId);
 
-            var existingTask = new TaskItem
-            {
-                Id = taskId,
-                Title = "Original Task",
-                Description = "Original Description",
-                Status = Api.Features.TaskItems.Models.TaskStatus.Todo,
-                AssignedUserId = "olduser123",
-                ProjectId = Guid.NewGuid()
-            };
+            // Act
+            var resultDto = await _handler.Handle(command, CancellationToken.None);
 
-            var updatedTaskDto = new TaskItemDto
-            {
-                Id = taskId,
-                Title = command.Title,
-                Description = command.Description,
-                Status = command.Status,
-                AssignedUserId = command.AssignedUserId
-            };
+            // Assert
+            resultDto.Should().NotBeNull();
+            resultDto.Title.Should().Be(command.Title);
+            resultDto.Status.Should().Be(command.Status);
 
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ValidationResult());
-
-            _taskItemRepositoryMock.Setup(x => x.GetByIdAsync(command.Id))
-                .ReturnsAsync(existingTask);
-
-            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.RequestingUserId))
-                .ReturnsAsync(new User { Id = command.RequestingUserId });
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.RequestingUserId, Roles.ProjectManager))
-                .ReturnsAsync(true);
-
-            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.AssignedUserId))
-                .ReturnsAsync(new User { Id = command.AssignedUserId });
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.AssignedUserId, Roles.RegularUser))
-                .ReturnsAsync(true);
-
-            _mapperMock.Setup(x => x.Map(command, existingTask))
-                .Callback<UpdateTaskItemCommand, TaskItem>((cmd, task) =>
-                {
-                    task.Title = cmd.Title;
-                    task.Description = cmd.Description;
-                    task.Status = cmd.Status;
-                    task.AssignedUserId = cmd.AssignedUserId;
-                    task.DueDate = cmd.DueDate;
-                });
-
-            _mapperMock.Setup(x => x.Map<TaskItemDto>(existingTask))
-                .Returns(updatedTaskDto);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeTrue();
-            result.Value.Should().NotBeNull();
-            result.Value.Should().BeEquivalentTo(updatedTaskDto);
-
-            _taskItemRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<TaskItem>()), Times.Once);
-            existingTask.LastModifiedBy.Should().Be(command.RequestingUserId);
+            var updatedTask = await _dbContext.TaskItems.FindAsync(_taskIdToUpdate);
+            updatedTask!.Title.Should().Be(command.Title);
+            updatedTask.Status.Should().Be(command.Status);
+            updatedTask.LastModifiedByUserId.Should().Be(_projectOwnerId);
+            _mockCurrentUser.Verify(u => u.Id, Times.Exactly(2));
         }
 
         [Fact]
-        public async Task Handle_WithValidRequestFromAssignedUser_ShouldReturnSuccessResult()
+        public async Task Handle_ShouldUpdateTaskItem_WhenUserIsAssignee()
         {
-            var taskId = Guid.NewGuid();
-            var userId = "user123";
-            var command = new UpdateTaskItemCommand
-            {
-                Id = taskId,
-                Title = "Updated Task",
-                Description = "Updated Description",
-                Status = Api.Features.TaskItems.Models.TaskStatus.InProgress,
-                AssignedUserId = userId,
-                RequestingUserId = userId,
-                DueDate = DateTime.UtcNow.AddDays(10)
-            };
+            // Arrange
+            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Updated by Assignee", Status = TaskStatus.Done };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_taskAssigneeId);
 
-            var existingTask = new TaskItem
-            {
-                Id = taskId,
-                Title = "Original Task",
-                Description = "Original Description",
-                Status = Api.Features.TaskItems.Models.TaskStatus.Todo,
-                AssignedUserId = userId,
-                ProjectId = Guid.NewGuid()
-            };
+            // Act
+            var resultDto = await _handler.Handle(command, CancellationToken.None);
 
-            var updatedTaskDto = new TaskItemDto
-            {
-                Id = taskId,
-                Title = command.Title,
-                Description = command.Description,
-                Status = command.Status,
-                AssignedUserId = command.AssignedUserId
-            };
+            // Assert
+            resultDto.Should().NotBeNull();
+            resultDto.Title.Should().Be(command.Title);
 
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ValidationResult());
-
-            _taskItemRepositoryMock.Setup(x => x.GetByIdAsync(command.Id))
-                .ReturnsAsync(existingTask);
-
-            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.RequestingUserId))
-                .ReturnsAsync(new User { Id = command.RequestingUserId });
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.RequestingUserId, Roles.ProjectManager))
-                .ReturnsAsync(false);
-
-            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.AssignedUserId))
-                .ReturnsAsync(new User { Id = command.AssignedUserId });
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.AssignedUserId, Roles.RegularUser))
-                .ReturnsAsync(true);
-
-            _mapperMock.Setup(x => x.Map(command, existingTask))
-                .Callback<UpdateTaskItemCommand, TaskItem>((cmd, task) =>
-                {
-                    task.Title = cmd.Title;
-                    task.Description = cmd.Description;
-                    task.Status = cmd.Status;
-                    task.AssignedUserId = cmd.AssignedUserId;
-                    task.DueDate = cmd.DueDate;
-                });
-
-            _mapperMock.Setup(x => x.Map<TaskItemDto>(existingTask))
-                .Returns(updatedTaskDto);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeTrue();
-            result.Value.Should().NotBeNull();
-            result.Value.Should().BeEquivalentTo(updatedTaskDto);
-
-            _taskItemRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<TaskItem>()), Times.Once);
-            existingTask.LastModifiedBy.Should().Be(command.RequestingUserId);
+            var updatedTask = await _dbContext.TaskItems.FindAsync(_taskIdToUpdate);
+            updatedTask!.Title.Should().Be(command.Title);
+            updatedTask.LastModifiedByUserId.Should().Be(_taskAssigneeId);
+            _mockCurrentUser.Verify(u => u.Id, Times.Exactly(2));
         }
 
         [Fact]
-        public async Task Handle_WithNonExistentTask_ShouldReturnFailure()
+        public async Task Handle_ShouldThrowNotFoundException_WhenTaskItemDoesNotExist()
         {
-            var command = new UpdateTaskItemCommand
-            {
-                Id = Guid.NewGuid(),
-                Title = "Updated Task",
-                RequestingUserId = "manager123",
-                AssignedUserId = "user123"
-            };
+            // Arrange
+            var command = new UpdateTaskItemCommand { Id = Guid.NewGuid(), Title = "NonExistent Task Update" };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_projectOwnerId);
 
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ValidationResult());
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            _taskItemRepositoryMock.Setup(x => x.GetByIdAsync(command.Id))
-                .ReturnsAsync((TaskItem?)null);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("Task not found");
-            _taskItemRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<TaskItem>()), Times.Never);
+            // Assert
+            await act.Should().ThrowAsync<NotFoundException>();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
         }
 
         [Fact]
-        public async Task Handle_WithUnauthorizedUser_ShouldReturnFailure()
+        public async Task Handle_ShouldThrowForbiddenAccessException_WhenUserIsNotOwnerOrAssignee()
         {
-            var taskId = Guid.NewGuid();
-            var command = new UpdateTaskItemCommand
-            {
-                Id = taskId,
-                Title = "Updated Task",
-                RequestingUserId = "unauthorized123",
-                AssignedUserId = "user123"
-            };
+            // Arrange
+            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Forbidden Update Attempt" };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_otherUserId);
 
-            var existingTask = new TaskItem
-            {
-                Id = taskId,
-                Title = "Original Task",
-                AssignedUserId = "differentUser123",
-                ProjectId = Guid.NewGuid()
-            };
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ValidationResult());
-
-            _taskItemRepositoryMock.Setup(x => x.GetByIdAsync(command.Id))
-                .ReturnsAsync(existingTask);
-
-            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.RequestingUserId))
-                .ReturnsAsync(new User { Id = command.RequestingUserId });
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.RequestingUserId, Roles.ProjectManager))
-                .ReturnsAsync(false);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("User is not authorized to update this task");
-            _taskItemRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<TaskItem>()), Times.Never);
+            // Assert
+            await act.Should().ThrowAsync<ForbiddenAccessException>();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
+            var task = await _dbContext.TaskItems.FindAsync(_taskIdToUpdate);
+            task!.Title.Should().Be(_initialTaskState.Title);
         }
 
         [Fact]
-        public async Task Handle_WithNonRegularUserAssigned_ShouldReturnFailure()
+        public async Task Handle_ShouldThrowUnauthorizedAccessException_WhenUserIsNotAuthenticated()
         {
-            var taskId = Guid.NewGuid();
-            var command = new UpdateTaskItemCommand
-            {
-                Id = taskId,
-                Title = "Updated Task",
-                AssignedUserId = "admin123",
-                RequestingUserId = "manager123"
-            };
+            // Arrange
+            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Unauth Update" };
+            _mockCurrentUser.Setup(u => u.Id).Returns((string?)null);
 
-            var existingTask = new TaskItem
-            {
-                Id = taskId,
-                Title = "Original Task",
-                AssignedUserId = "user123",
-                ProjectId = Guid.NewGuid()
-            };
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ValidationResult());
-
-            _taskItemRepositoryMock.Setup(x => x.GetByIdAsync(command.Id))
-                .ReturnsAsync(existingTask);
-
-            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.RequestingUserId))
-                .ReturnsAsync(new User { Id = command.RequestingUserId });
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.RequestingUserId, Roles.ProjectManager))
-                .ReturnsAsync(true);
-
-            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.AssignedUserId))
-                .ReturnsAsync(new User { Id = command.AssignedUserId });
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.AssignedUserId, Roles.RegularUser))
-                .ReturnsAsync(false);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("Assigned user must be a regular user");
-            _taskItemRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<TaskItem>()), Times.Never);
+            // Assert
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
         }
 
-        [Fact]
-        public async Task Handle_WithInvalidCommand_ShouldReturnValidationError()
+        public void Dispose()
         {
-            var command = new UpdateTaskItemCommand();
-            var validationResult = new ValidationResult(
-                new[] { new ValidationFailure("Id", "Task ID is required") }
-            );
-
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("Task ID is required");
-            _taskItemRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<TaskItem>()), Times.Never);
+            _dbContext?.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -15,7 +15,7 @@ namespace TaskManagement.Auth.Tests.TestHelpers.Data
 
         private static async Task SeedUserAsync(IServiceScope scope)
         {
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AuthUser>>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
             var user = TestData.User.Create();
             var existingUser = await userManager.FindByEmailAsync(user.Email);

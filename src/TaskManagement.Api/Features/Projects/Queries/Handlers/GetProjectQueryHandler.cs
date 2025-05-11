@@ -1,32 +1,51 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
-using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Models;
+using TaskManagement.Api.Features.Users.Services.Interfaces;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Features.Projects.Queries.Handlers
 {
-    public class GetProjectQueryHandler : IRequestHandler<GetProjectQuery, Result<ProjectDto>>
+    public class GetProjectQueryHandler : IRequestHandler<GetProjectQuery, ProjectDto>
     {
-        private readonly IProjectRepository _projectRepository;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
 
-        public GetProjectQueryHandler(IProjectRepository projectRepository, IMapper mapper)
+        public GetProjectQueryHandler(
+            TaskManagementDbContext dbContext,
+            ICurrentUserService currentUserService,
+            IMapper mapper)
         {
-            _projectRepository = projectRepository;
+            _dbContext = dbContext;
+            _currentUserService = currentUserService;
             _mapper = mapper;
         }
 
-        public async Task<Result<ProjectDto>> Handle(GetProjectQuery request, CancellationToken cancellationToken)
+        public async Task<ProjectDto> Handle(GetProjectQuery request, CancellationToken cancellationToken)
         {
-            var project = await _projectRepository.GetByIdAsync(request.Id);
-            if (project == null)
+            var currentUserId = _currentUserService.Id;
+            if (string.IsNullOrEmpty(currentUserId))
             {
-                return Result<ProjectDto>.Failure("Project not found");
+                throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var projectDto = _mapper.Map<ProjectDto>(project);
-            return Result<ProjectDto>.Success(projectDto);
+            var projectDto = await _dbContext.Projects
+                .Where(p => p.Id == request.Id)
+                .Where(p => p.OwnerUserId == currentUserId || p.Members.Any(m => m.UserId == currentUserId))
+                .ProjectTo<ProjectDto>(_mapper.ConfigurationProvider)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (projectDto == null)
+            {
+                throw new NotFoundException(nameof(Project), request.Id);
+            }
+
+            return projectDto;
         }
     }
 }

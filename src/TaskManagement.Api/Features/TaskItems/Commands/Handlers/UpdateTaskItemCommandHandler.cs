@@ -1,78 +1,60 @@
 ﻿using AutoMapper;
-using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using TaskManagement.Api.Features.TaskItems.Models;
 using TaskManagement.Api.Features.TaskItems.Models.DTOs;
-using TaskManagement.Api.Features.TaskItems.Repositories.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Models;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 {
-    public class UpdateTaskItemCommandHandler : IRequestHandler<UpdateTaskItemCommand, Result<TaskItemDto>>
+    public class UpdateTaskItemCommandHandler : IRequestHandler<UpdateTaskItemCommand, TaskItemDto>
     {
-        private readonly ITaskItemRepository _taskItemRepository;
-        private readonly IUserService _userService;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
-        private readonly IValidator<UpdateTaskItemCommand> _validator;
 
         public UpdateTaskItemCommandHandler(
-            ITaskItemRepository taskItemRepository,
-            IUserService userService,
-            IMapper mapper,
-            IValidator<UpdateTaskItemCommand> validator)
+            TaskManagementDbContext dbContext,
+            ICurrentUserService currentUserService,
+            IMapper mapper)
         {
-            _taskItemRepository = taskItemRepository;
-            _userService = userService;
+            _dbContext = dbContext;
+            _currentUserService = currentUserService;
             _mapper = mapper;
-            _validator = validator;
         }
 
-        public async Task<Result<TaskItemDto>> Handle(UpdateTaskItemCommand request, CancellationToken cancellationToken)
+        public async Task<TaskItemDto> Handle(UpdateTaskItemCommand request, CancellationToken cancellationToken)
         {
-            var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-            if (!validationResult.IsValid)
+            var currentUserId = _currentUserService.Id;
+            if (string.IsNullOrEmpty(currentUserId))
             {
-                return Result<TaskItemDto>.Failure(validationResult.Errors.First().ErrorMessage);
+                throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var taskItem = await _taskItemRepository.GetByIdAsync(request.Id);
+            var taskItem = await _dbContext.TaskItems
+                .Include(t => t.Project)
+                .ThenInclude(p => p.Members)
+                .FirstOrDefaultAsync(t => t.Id == request.Id, cancellationToken);
+
             if (taskItem == null)
             {
-                return Result<TaskItemDto>.Failure("Task not found");
+                throw new NotFoundException(nameof(TaskItem), request.Id);
             }
+            bool isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
+            bool isAssignee = taskItem.AssignedUserId == currentUserId;
 
-            var requestingUser = await _userService.GetUserByIdAsync(request.RequestingUserId);
-            if (requestingUser == null)
+            if (!isProjectOwner && !isAssignee)
             {
-                return Result<TaskItemDto>.Failure("Requesting user not found");
-            }
-
-            if (!await _userService.IsInRoleAsync(requestingUser.Id, Roles.ProjectManager) &&
-                taskItem.AssignedUserId != request.RequestingUserId)
-            {
-                return Result<TaskItemDto>.Failure("User is not authorized to update this task");
-            }
-
-            var assignedUser = await _userService.GetUserByIdAsync(request.AssignedUserId);
-            if (assignedUser == null)
-            {
-                return Result<TaskItemDto>.Failure("Assigned user not found");
-            }
-
-            if (!await _userService.IsInRoleAsync(assignedUser.Id, Roles.RegularUser))
-            {
-                return Result<TaskItemDto>.Failure("Assigned user must be a regular user");
+                throw new ForbiddenAccessException("User is not authorized to update this task item.");
             }
 
             _mapper.Map(request, taskItem);
-            taskItem.LastModifiedBy = request.RequestingUserId;
-            taskItem.LastModifiedAt = DateTime.UtcNow;
 
-            await _taskItemRepository.UpdateAsync(taskItem);
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
-            var taskItemDto = _mapper.Map<TaskItemDto>(taskItem);
-            return Result<TaskItemDto>.Success(taskItemDto);
+            return _mapper.Map<TaskItemDto>(taskItem);
         }
     }
 }

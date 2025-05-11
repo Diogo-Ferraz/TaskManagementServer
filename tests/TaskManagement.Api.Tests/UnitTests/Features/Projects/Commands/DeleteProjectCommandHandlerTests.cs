@@ -1,129 +1,124 @@
 ﻿using FluentAssertions;
-using FluentValidation;
-using FluentValidation.Results;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Commands.Handlers;
 using TaskManagement.Api.Features.Projects.Models;
-using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
 {
-    public class DeleteProjectCommandHandlerTests
+    public class DeleteProjectCommandHandlerTests : IDisposable
     {
-        private readonly Mock<IProjectRepository> _projectRepositoryMock;
-        private readonly Mock<IUserService> _userServiceMock;
-        private readonly Mock<IValidator<DeleteProjectCommand>> _validatorMock;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly Mock<ICurrentUserService> _mockCurrentUser;
         private readonly DeleteProjectCommandHandler _handler;
+
+        // Test Data
+        private readonly Guid _projectIdToDelete = Guid.NewGuid();
+        private readonly string _ownerUserId = "user-owner-123";
+        private readonly string _otherUserId = "user-other-789";
 
         public DeleteProjectCommandHandlerTests()
         {
-            _projectRepositoryMock = new Mock<IProjectRepository>();
-            _userServiceMock = new Mock<IUserService>();
-            _validatorMock = new Mock<IValidator<DeleteProjectCommand>>();
+            var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
+                .UseInMemoryDatabase(databaseName: $"TestDb_DeleteProject_{Guid.NewGuid()}")
+                .Options;
+            _mockCurrentUser = new Mock<ICurrentUserService>();
+            _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
 
-            _handler = new DeleteProjectCommandHandler(
-                _projectRepositoryMock.Object,
-                _userServiceMock.Object,
-                _validatorMock.Object
-            );
+            SeedDatabase();
+
+            _handler = new DeleteProjectCommandHandler(_dbContext, _mockCurrentUser.Object);
+        }
+
+        private void SeedDatabase()
+        {
+            _dbContext.Projects.Add(new Project
+            {
+                Id = _projectIdToDelete,
+                Name = "To Delete",
+                OwnerUserId = _ownerUserId,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = _ownerUserId,
+                LastModifiedAt = DateTime.UtcNow,
+                LastModifiedByUserId = _ownerUserId
+            });
+            _dbContext.SaveChanges();
         }
 
         [Fact]
-        public async Task Handle_WithValidRequest_ShouldReturnSuccessResult()
+        public async Task Handle_ShouldRemoveProject_WhenRequestIsValidAndUserIsOwner()
         {
-            var projectId = Guid.NewGuid();
-            var projectName = "project123";
+            // Arrange
+            var command = new DeleteProjectCommand { Id = _projectIdToDelete };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_ownerUserId);
+            int initialCount = await _dbContext.Projects.CountAsync();
 
-            var command = new DeleteProjectCommand
-            {
-                Id = projectId,
-                UserId = "user123"
-            };
+            // Act
+            await _handler.Handle(command, CancellationToken.None);
 
-            var existingProject = new Project
-            {
-                Id = projectId,
-                Name = projectName,
-                UserId = command.UserId
-            };
-
-            _projectRepositoryMock.Setup(x => x.GetByIdAsync(projectId))
-                .ReturnsAsync(existingProject);
-
-            var validationResult = new ValidationResult();
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.UserId, Roles.ProjectManager))
-                .ReturnsAsync(true);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeTrue();
-            result.Value.Should().BeTrue();
-            _projectRepositoryMock.Verify(x => x.DeleteAsync(existingProject), Times.Once);
+            // Assert
+            _mockCurrentUser.Verify(u => u.Id, Times.Exactly(2));
+            var deletedProject = await _dbContext.Projects.FindAsync(_projectIdToDelete);
+            deletedProject.Should().BeNull();
+            (await _dbContext.Projects.CountAsync()).Should().Be(initialCount - 1);
         }
 
         [Fact]
-        public async Task Handle_WithNonExistentProject_ShouldReturnFailureResult()
+        public async Task Handle_ShouldThrowNotFoundException_WhenProjectDoesNotExist()
         {
-            var command = new DeleteProjectCommand
-            {
-                Id = Guid.NewGuid(),
-                UserId = "user123"
-            };
+            // Arrange
+            var command = new DeleteProjectCommand { Id = Guid.NewGuid() };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_ownerUserId);
 
-            _projectRepositoryMock.Setup(x => x.GetByIdAsync(command.Id))
-                .ReturnsAsync((Project?)null);
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            var validationResult = new ValidationResult();
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("Project not found");
-            _projectRepositoryMock.Verify(x => x.DeleteAsync(It.IsAny<Project>()), Times.Never);
+            // Assert
+            await act.Should().ThrowAsync<NotFoundException>();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
         }
 
         [Fact]
-        public async Task Handle_WithUnauthorizedUser_ShouldReturnFailureResult()
+        public async Task Handle_ShouldThrowForbiddenAccessException_WhenUserIsNotOwner()
         {
-            var projectId = Guid.NewGuid();
-            var projectName = "project123";
+            // Arrange
+            var command = new DeleteProjectCommand { Id = _projectIdToDelete };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_otherUserId);
+            int initialCount = await _dbContext.Projects.CountAsync();
 
-            var command = new DeleteProjectCommand
-            {
-                Id = projectId,
-                UserId = "user123"
-            };
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            var existingProject = new Project
-            {
-                Id = projectId,
-                Name = projectName,
-                UserId = "differentUser"
-            };
+            // Assert
+            await act.Should().ThrowAsync<ForbiddenAccessException>();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
+            (await _dbContext.Projects.CountAsync()).Should().Be(initialCount);
+            var project = await _dbContext.Projects.FindAsync(_projectIdToDelete);
+            project.Should().NotBeNull();
+        }
 
-            _projectRepositoryMock.Setup(x => x.GetByIdAsync(projectId))
-                .ReturnsAsync(existingProject);
+        [Fact]
+        public async Task Handle_ShouldThrowUnauthorizedAccessException_WhenUserIsNotAuthenticated()
+        {
+            // Arrange
+            var command = new DeleteProjectCommand { Id = _projectIdToDelete };
+            _mockCurrentUser.Setup(u => u.Id).Returns((string?)null);
 
-            var validationResult = new ValidationResult();
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.UserId, Roles.ProjectManager))
-                .ReturnsAsync(false);
+            // Assert
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        }
 
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("User is not authorized to delete this project");
-            _projectRepositoryMock.Verify(x => x.DeleteAsync(It.IsAny<Project>()), Times.Never);
+        public void Dispose()
+        {
+            _dbContext?.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -1,58 +1,55 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using MediatR;
-using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using TaskManagement.Api.Features.TaskItems.Models.DTOs;
-using TaskManagement.Api.Features.TaskItems.Repositories.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Models;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
 {
-    public class GetTasksForProjectQueryHandler : IRequestHandler<GetTasksForProjectQuery, Result<IReadOnlyList<TaskItemDto>>>
+    public class GetTasksForProjectQueryHandler : IRequestHandler<GetTasksForProjectQuery, IReadOnlyList<TaskItemDto>>
     {
-        private readonly ITaskItemRepository _taskItemRepository;
-        private readonly IProjectRepository _projectRepository;
-        private readonly IUserService _userService;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
 
         public GetTasksForProjectQueryHandler(
-            ITaskItemRepository taskItemRepository,
-            IProjectRepository projectRepository,
-            IUserService userService,
+            TaskManagementDbContext dbContext,
+            ICurrentUserService currentUserService,
             IMapper mapper)
         {
-            _taskItemRepository = taskItemRepository;
-            _projectRepository = projectRepository;
-            _userService = userService;
+            _dbContext = dbContext;
+            _currentUserService = currentUserService;
             _mapper = mapper;
         }
 
-        public async Task<Result<IReadOnlyList<TaskItemDto>>> Handle(GetTasksForProjectQuery request, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<TaskItemDto>> Handle(GetTasksForProjectQuery request, CancellationToken cancellationToken)
         {
-            var project = await _projectRepository.GetByIdAsync(request.ProjectId);
-            if (project == null)
+            var currentUserId = _currentUserService.Id;
+            if (string.IsNullOrEmpty(currentUserId))
             {
-                return Result<IReadOnlyList<TaskItemDto>>.Failure("Project not found");
+                throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var requestingUser = await _userService.GetUserByIdAsync(request.RequestingUserId);
-            if (requestingUser == null)
+            bool canViewProject = await _dbContext.Projects
+                .AnyAsync(p => p.Id == request.ProjectId &&
+                              (p.OwnerUserId == currentUserId || p.Members.Any(m => m.UserId == currentUserId)),
+                          cancellationToken);
+
+            if (!canViewProject)
             {
-                return Result<IReadOnlyList<TaskItemDto>>.Failure("Requesting user not found");
+                throw new ForbiddenAccessException($"User is not authorized to view tasks for Project ID {request.ProjectId}.");
             }
 
-            // Only the project admin can view all tasks in a project
-            if (!await _userService.IsInRoleAsync(requestingUser.Id, Roles.ProjectManager) &&
-                project.UserId != request.RequestingUserId)
-            {
-                return Result<IReadOnlyList<TaskItemDto>>.Failure("User is not authorized to view tasks in this project");
-            }
+            var taskDtos = await _dbContext.TaskItems
+                .Where(t => t.ProjectId == request.ProjectId)
+                .OrderBy(t => t.CreatedAt)
+                .ProjectTo<TaskItemDto>(_mapper.ConfigurationProvider)
+                .ToListAsync(cancellationToken);
 
-            var tasks = await _taskItemRepository.GetTasksByProjectIdAsync(request.ProjectId);
-            var taskDtos = _mapper.Map<IReadOnlyList<TaskItemDto>>(tasks);
-
-            return Result<IReadOnlyList<TaskItemDto>>.Success(taskDtos);
+            return taskDtos;
         }
     }
 }

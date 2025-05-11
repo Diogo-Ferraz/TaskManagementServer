@@ -1,136 +1,96 @@
 ﻿using AutoMapper;
 using FluentAssertions;
-using FluentValidation;
-using FluentValidation.Results;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Commands.Handlers;
-using TaskManagement.Api.Features.Projects.Models;
-using TaskManagement.Api.Features.Projects.Models.DTOs;
-using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
-using TaskManagement.Api.Features.Users.Models;
+using TaskManagement.Api.Features.Projects.Mappings;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
 {
-    public class CreateProjectCommandHandlerTests
+    public class CreateProjectCommandHandlerTests : IDisposable
     {
-        private readonly Mock<IProjectRepository> _projectRepositoryMock;
-        private readonly Mock<IUserService> _userServiceMock;
-        private readonly Mock<IMapper> _mapperMock;
-        private readonly Mock<IValidator<CreateProjectCommand>> _validatorMock;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly IMapper _mapper;
+        private readonly Mock<ICurrentUserService> _mockCurrentUser;
         private readonly CreateProjectCommandHandler _handler;
+
+        private readonly string _testUserId = "user-creator-123";
 
         public CreateProjectCommandHandlerTests()
         {
-            _projectRepositoryMock = new Mock<IProjectRepository>();
-            _userServiceMock = new Mock<IUserService>();
-            _mapperMock = new Mock<IMapper>();
-            _validatorMock = new Mock<IValidator<CreateProjectCommand>>();
+            var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
+                .UseInMemoryDatabase(databaseName: $"TestDb_CreateProject_{Guid.NewGuid()}")
+                .Options;
 
-            _handler = new CreateProjectCommandHandler(
-                _projectRepositoryMock.Object,
-                _userServiceMock.Object,
-                _mapperMock.Object,
-                _validatorMock.Object
-            );
+            _mockCurrentUser = new Mock<ICurrentUserService>();
+            _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
+
+            var mappingConfig = new MapperConfiguration(cfg => cfg.AddProfile<ProjectMappingProfile>());
+            _mapper = mappingConfig.CreateMapper();
+
+            _handler = new CreateProjectCommandHandler(_dbContext, _mockCurrentUser.Object, _mapper);
         }
 
         [Fact]
-        public async Task Handle_WithValidRequest_ShouldReturnSuccessResult()
+        public async Task Handle_ShouldCreateProjectAndAddOwnerAsMember_WhenRequestIsValidAndUserIsAuthenticated()
         {
-            var command = new CreateProjectCommand
-            {
-                Name = "Test Project",
-                Description = "Test Description",
-                UserId = "user123"
-            };
+            // Arrange
+            var command = new CreateProjectCommand { Name = "New Valid Project", Description = "Desc" };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_testUserId);
 
-            var project = new Project
-            {
-                Id = Guid.NewGuid(),
-                Name = command.Name,
-                Description = command.Description,
-                UserId = command.UserId
-            };
+            // Act
+            var resultDto = await _handler.Handle(command, CancellationToken.None);
 
-            var projectDto = new ProjectDto
-            {
-                Id = project.Id,
-                Name = project.Name,
-                Description = project.Description,
-                UserId = project.UserId,
-                UserName = "testuser"
-            };
+            // Assert
+            resultDto.Should().NotBeNull();
+            resultDto.Name.Should().Be(command.Name);
+            resultDto.Description.Should().Be(command.Description);
+            resultDto.OwnerUserId.Should().Be(_testUserId);
+            resultDto.Id.Should().NotBeEmpty();
 
-            var validationResult = new ValidationResult();
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
+            var createdProject = await _dbContext.Projects.FindAsync(resultDto.Id);
+            createdProject.Should().NotBeNull();
+            createdProject!.Name.Should().Be(command.Name);
+            createdProject.OwnerUserId.Should().Be(_testUserId);
+            createdProject.CreatedByUserId.Should().Be(_testUserId);
+            createdProject.LastModifiedByUserId.Should().Be(_testUserId);
+            createdProject.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+            createdProject.LastModifiedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
 
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.UserId, Roles.ProjectManager))
-                .ReturnsAsync(true);
 
-            _mapperMock.Setup(x => x.Map<Project>(command))
-                .Returns(project);
+            var createdMember = await _dbContext.ProjectMembers
+                                      .FirstOrDefaultAsync(pm => pm.ProjectId == resultDto.Id && pm.UserId == _testUserId);
+            createdMember.Should().NotBeNull();
 
-            _mapperMock.Setup(x => x.Map<ProjectDto>(project))
-                .Returns(projectDto);
-
-            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.UserId))
-                .ReturnsAsync(new User { UserName = "testuser" });
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeTrue();
-            result.Value.Should().NotBeNull();
-            result.Value.Should().BeEquivalentTo(projectDto);
-
-            _projectRepositoryMock.Verify(x => x.AddAsync(It.IsAny<Project>()), Times.Once);
+            _mockCurrentUser.Verify(u => u.Id, Times.Exactly(2));
         }
 
         [Fact]
-        public async Task Handle_WithInvalidRequest_ShouldReturnFailureResult()
+        public async Task Handle_ShouldThrowUnauthorizedAccessException_WhenUserIsNotAuthenticated()
         {
-            var command = new CreateProjectCommand();
-            var validationResult = new ValidationResult(new[]
-            {
-                new ValidationFailure("Name", "Name is required")
-            });
+            // Arrange
+            var command = new CreateProjectCommand { Name = "New Project" };
+            _mockCurrentUser.Setup(u => u.Id).Returns((string?)null);
 
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("Name is required");
-
-            _projectRepositoryMock.Verify(x => x.AddAsync(It.IsAny<Project>()), Times.Never);
+            // Assert
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once); // Verify check was made
         }
 
-        [Fact]
-        public async Task Handle_WithUnauthorizedUser_ShouldReturnFailureResult()
+        // Add test case for ValidationException if NOT relying solely on pipeline behavior
+        // [Fact]
+        // public async Task Handle_ShouldThrowValidationException_WhenRequestIsInvalid() { ... }
+
+        public void Dispose()
         {
-            var command = new CreateProjectCommand
-            {
-                Name = "Test Project",
-                UserId = "user123"
-            };
-
-            var validationResult = new ValidationResult();
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.UserId, Roles.ProjectManager))
-                .ReturnsAsync(false);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("User is not authorized to create projects");
-
-            _projectRepositoryMock.Verify(x => x.AddAsync(It.IsAny<Project>()), Times.Never);
+            _dbContext?.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

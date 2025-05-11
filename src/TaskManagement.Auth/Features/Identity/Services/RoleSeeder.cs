@@ -10,7 +10,7 @@ namespace TaskManagement.Auth.Features.Identity.Services
         {
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            string[] roleNames = [Roles.Administrator, Roles.ProjectManager, Roles.RegularUser];
+            string[] roleNames = [Roles.Administrator, Roles.User];
 
             foreach (var roleName in roleNames)
             {
@@ -23,13 +23,12 @@ namespace TaskManagement.Auth.Features.Identity.Services
 
         public static async Task SeedUsersAsync(this IServiceProvider serviceProvider, ILogger logger)
         {
-            var userManager = serviceProvider.GetRequiredService<UserManager<AuthUser>>();
+            var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
             var usersToSeed = new List<(string Email, string Password, string Role)>
             {
                 ("demo-admin@example.com", "Demo123!", Roles.Administrator),
-                ("demo-manager@example.com", "Demo123!", Roles.ProjectManager),
-                ("demo-user@example.com", "Demo123!", Roles.RegularUser)
+                ("demo-user@example.com", "Demo123!", Roles.User)
             };
 
             foreach (var (email, password, role) in usersToSeed)
@@ -39,7 +38,7 @@ namespace TaskManagement.Auth.Features.Identity.Services
         }
 
         private static async Task CreateUserIfNotExistsAsync(
-            UserManager<AuthUser> userManager,
+            UserManager<ApplicationUser> userManager,
             string email,
             string password,
             string role,
@@ -47,7 +46,7 @@ namespace TaskManagement.Auth.Features.Identity.Services
         {
             if (await userManager.FindByEmailAsync(email) == null)
             {
-                var user = new AuthUser
+                var user = new ApplicationUser
                 {
                     UserName = email,
                     Email = email,

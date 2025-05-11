@@ -1,15 +1,13 @@
 ﻿using FluentValidation;
 using MediatR;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
-using TaskManagement.Api.Infrastructure.Common.Models;
 
 namespace TaskManagement.Api.Features.Projects.Commands
 {
-    public class CreateProjectCommand : IRequest<Result<ProjectDto>>
+    public class CreateProjectCommand : IRequest<ProjectDto>
     {
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public string UserId { get; set; }
+        public required string Name { get; set; }
+        public string? Description { get; set; }
     }
 
     public class CreateProjectCommandValidator : AbstractValidator<CreateProjectCommand>
@@ -22,9 +20,6 @@ namespace TaskManagement.Api.Features.Projects.Commands
 
             RuleFor(x => x.Description)
                 .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters");
-
-            RuleFor(x => x.UserId)
-                .NotEmpty().WithMessage("Project User ID is required");
         }
     }
 }

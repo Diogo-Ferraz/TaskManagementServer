@@ -7,12 +7,11 @@ namespace TaskManagement.Api.Features.Projects.Models.DTOs
         public Guid Id { get; set; }
         public required string Name { get; set; }
         public string Description { get; set; } = string.Empty;
-        public required string UserId { get; set; }
-        public string UserName { get; set; } = string.Empty;
+        public required string OwnerUserId { get; set; }
         public DateTime CreatedAt { get; set; }
-        public string CreatedBy { get; set; } = string.Empty;
+        public string CreatedByUserId { get; set; } = string.Empty;
         public DateTime LastModifiedAt { get; set; }
-        public string LastModifiedBy { get; set; } = string.Empty;
+        public string LastModifiedByUserId { get; set; } = string.Empty;
         public ICollection<TaskItemDto>? TaskItems { get; set; }
     }
 }

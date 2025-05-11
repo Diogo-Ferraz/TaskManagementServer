@@ -1,40 +1,44 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
-using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Models;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Features.Projects.Queries.Handlers
 {
-    public class GetProjectsForAdminQueryHandler : IRequestHandler<GetProjectsForUserQuery, Result<IReadOnlyList<ProjectDto>>>
+    public class GetProjectsForUserQueryHandler : IRequestHandler<GetProjectsForUserQuery, IReadOnlyList<ProjectDto>>
     {
-        private readonly IProjectRepository _projectRepository;
-        private readonly IUserService _userService;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
 
-        public GetProjectsForAdminQueryHandler(
-            IProjectRepository projectRepository,
-            IUserService userService,
+        public GetProjectsForUserQueryHandler(
+            TaskManagementDbContext dbContext,
+            ICurrentUserService currentUserService,
             IMapper mapper)
         {
-            _projectRepository = projectRepository;
-            _userService = userService;
+            _dbContext = dbContext;
+            _currentUserService = currentUserService;
             _mapper = mapper;
         }
 
-        public async Task<Result<IReadOnlyList<ProjectDto>>> Handle(GetProjectsForUserQuery request, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<ProjectDto>> Handle(GetProjectsForUserQuery request, CancellationToken cancellationToken)
         {
-            if (!await _userService.IsInRoleAsync(request.UserId, Roles.ProjectManager))
+            var currentUserId = _currentUserService.Id;
+            if (string.IsNullOrEmpty(currentUserId))
             {
-                return Result<IReadOnlyList<ProjectDto>>.Failure("User is not authorized to view projects");
+                throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var projects = await _projectRepository.GetProjectsByUserIdAsync(request.UserId);
-            var projectDtos = _mapper.Map<IReadOnlyList<ProjectDto>>(projects);
+            var projectDtos = await _dbContext.Projects
+                .Where(p => p.OwnerUserId == currentUserId || p.Members.Any(m => m.UserId == currentUserId))
+                .OrderBy(p => p.Name)
+                .ProjectTo<ProjectDto>(_mapper.ConfigurationProvider)
+                .ToListAsync(cancellationToken);
 
-            return Result<IReadOnlyList<ProjectDto>>.Success(projectDtos);
+            return projectDtos;
         }
     }
 }

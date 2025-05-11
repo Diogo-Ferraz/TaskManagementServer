@@ -11,9 +11,9 @@ namespace TaskManagement.Auth.Presentation.Controllers
 {
     public class UserinfoController : Controller
     {
-        private readonly UserManager<AuthUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public UserinfoController(UserManager<AuthUser> userManager)
+        public UserinfoController(UserManager<ApplicationUser> userManager)
             => _userManager = userManager;
 
         //

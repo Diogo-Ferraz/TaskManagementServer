@@ -1,5 +1,4 @@
 ﻿using TaskManagement.Api.Features.Projects.Models;
-using TaskManagement.Api.Features.Users.Models;
 using TaskManagement.Api.Infrastructure.Common.Models;
 
 namespace TaskManagement.Api.Features.TaskItems.Models
@@ -11,9 +10,8 @@ namespace TaskManagement.Api.Features.TaskItems.Models
         public TaskStatus Status { get; set; }
         public DateTime? DueDate { get; set; }
         public Guid ProjectId { get; set; }
-        public required string AssignedUserId { get; set; }
-        public Project? Project { get; set; }
-        public User? AssignedUser { get; set; }
+        public string? AssignedUserId { get; set; }
+        public Project Project { get; set; } = null!;
     }
 
     public enum TaskStatus

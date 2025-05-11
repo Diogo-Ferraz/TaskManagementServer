@@ -1,52 +1,50 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using TaskManagement.Api.Features.TaskItems.Models.DTOs;
-using TaskManagement.Api.Features.TaskItems.Repositories.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Models;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
 {
-    public class GetTaskItemQueryHandler : IRequestHandler<GetTaskItemQuery, Result<TaskItemDto>>
+    public class GetTaskItemQueryHandler : IRequestHandler<GetTaskItemQuery, TaskItemDto>
     {
-        private readonly ITaskItemRepository _taskItemRepository;
-        private readonly IUserService _userService;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
 
         public GetTaskItemQueryHandler(
-            ITaskItemRepository taskItemRepository,
-            IUserService userService,
+            TaskManagementDbContext dbContext,
+            ICurrentUserService currentUserService,
             IMapper mapper)
         {
-            _taskItemRepository = taskItemRepository;
-            _userService = userService;
+            _dbContext = dbContext;
+            _currentUserService = currentUserService;
             _mapper = mapper;
         }
 
-        public async Task<Result<TaskItemDto>> Handle(GetTaskItemQuery request, CancellationToken cancellationToken)
+        public async Task<TaskItemDto> Handle(GetTaskItemQuery request, CancellationToken cancellationToken)
         {
-            var taskItem = await _taskItemRepository.GetByIdAsync(request.Id);
-            if (taskItem == null)
+            var currentUserId = _currentUserService.Id;
+            if (string.IsNullOrEmpty(currentUserId))
             {
-                return Result<TaskItemDto>.Failure("Task not found");
+                throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var requestingUser = await _userService.GetUserByIdAsync(request.RequestingUserId);
-            if (requestingUser == null)
+            var taskItemDto = await _dbContext.TaskItems
+                .Where(t => t.Id == request.Id)
+                .Where(t => t.Project.OwnerUserId == currentUserId || t.Project.Members.Any(m => m.UserId == currentUserId)) // Auth check
+                .ProjectTo<TaskItemDto>(_mapper.ConfigurationProvider)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (taskItemDto == null)
             {
-                return Result<TaskItemDto>.Failure("Requesting user not found");
+                throw new NotFoundException($"TaskItem with ID {request.Id} not found or access denied.");
             }
 
-            // Only the assigned user or project manager can view the task
-            if (!await _userService.IsInRoleAsync(requestingUser.Id, Roles.ProjectManager) &&
-                taskItem.AssignedUserId != request.RequestingUserId)
-            {
-                return Result<TaskItemDto>.Failure("User is not authorized to view this task");
-            }
-
-            var taskItemDto = _mapper.Map<TaskItemDto>(taskItem);
-            return Result<TaskItemDto>.Success(taskItemDto);
+            return taskItemDto;
         }
     }
 }

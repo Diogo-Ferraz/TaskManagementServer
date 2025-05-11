@@ -1,110 +1,117 @@
 ﻿using AutoMapper;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Moq;
+using TaskManagement.Api.Features.Projects.Models;
+using TaskManagement.Api.Features.TaskItems.Mappings;
 using TaskManagement.Api.Features.TaskItems.Models;
-using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 using TaskManagement.Api.Features.TaskItems.Queries;
 using TaskManagement.Api.Features.TaskItems.Queries.Handlers;
-using TaskManagement.Api.Features.TaskItems.Repositories.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
 {
-    public class GetTasksForUserQueryHandlerTests
+    public class GetTasksForUserQueryHandlerTests : IDisposable
     {
-        private readonly Mock<ITaskItemRepository> _taskItemRepositoryMock;
-        private readonly Mock<IUserService> _userServiceMock;
-        private readonly Mock<IMapper> _mapperMock;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly IMapper _mapper;
+        private readonly Mock<ICurrentUserService> _mockCurrentUser;
         private readonly GetTasksForUserQueryHandler _handler;
+
+        private readonly string _testUserId1 = "user-assignee-1";
+        private readonly string _testUserId2 = "user-assignee-2";
+        private readonly Guid _task1Id = Guid.NewGuid();
+        private readonly Guid _task2Id = Guid.NewGuid();
+        private readonly Guid _task3Id = Guid.NewGuid();
+        private readonly Guid _projectId = Guid.NewGuid();
+
 
         public GetTasksForUserQueryHandlerTests()
         {
-            _taskItemRepositoryMock = new Mock<ITaskItemRepository>();
-            _userServiceMock = new Mock<IUserService>();
-            _mapperMock = new Mock<IMapper>();
-            _handler = new GetTasksForUserQueryHandler(
-                _taskItemRepositoryMock.Object,
-                _userServiceMock.Object,
-                _mapperMock.Object
-            );
+            var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
+                .UseInMemoryDatabase(databaseName: $"TestDb_GetTasksForUser_{Guid.NewGuid()}")
+                .Options;
+            _dbContext = new TaskManagementDbContext(options, null);
+
+            var mappingConfig = new MapperConfiguration(cfg => cfg.AddProfile<TaskItemMappingProfile>());
+            _mapper = mappingConfig.CreateMapper();
+
+            _mockCurrentUser = new Mock<ICurrentUserService>();
+
+            SeedDatabase();
+
+            _handler = new GetTasksForUserQueryHandler(_dbContext, _mockCurrentUser.Object, _mapper);
         }
 
-        [Fact]
-        public async Task Handle_WithValidRegularUser_ShouldReturnSuccessResult()
+        private void SeedDatabase()
         {
-            var userId = Guid.NewGuid().ToString();
-            var query = new GetTasksForUserQuery { UserId = userId };
-
-            var taskItems = new List<TaskItem>
+            var project = new Project { Id = _projectId, Name = "Project For Tasks", OwnerUserId = "owner", CreatedAt = DateTime.UtcNow, CreatedByUserId = "owner", LastModifiedAt = DateTime.UtcNow, LastModifiedByUserId = "owner" };
+            var tasks = new List<TaskItem>
             {
-                new TaskItem { Id = Guid.NewGuid(), Title = "Task 1", AssignedUserId = "user1" },
-                new TaskItem { Id = Guid.NewGuid(), Title = "Task 2", AssignedUserId = "user2" }
+                new TaskItem { Id = _task1Id, Title = "Task 1", ProjectId = _projectId, Project = project, AssignedUserId = _testUserId1, CreatedByUserId="owner", CreatedAt=DateTime.UtcNow, LastModifiedAt=DateTime.UtcNow, LastModifiedByUserId="owner" },
+                new TaskItem { Id = _task2Id, Title = "Task 2", ProjectId = _projectId, Project = project, AssignedUserId = _testUserId2, CreatedByUserId="owner", CreatedAt=DateTime.UtcNow, LastModifiedAt=DateTime.UtcNow, LastModifiedByUserId="owner" },
+                new TaskItem { Id = _task3Id, Title = "Task 3", ProjectId = _projectId, Project = project, AssignedUserId = _testUserId1, CreatedByUserId="owner", CreatedAt=DateTime.UtcNow, LastModifiedAt=DateTime.UtcNow, LastModifiedByUserId="owner" }
             };
-
-            var taskItemDtos = taskItems.Select(t => new TaskItemDto
-            {
-                Id = t.Id,
-                AssignedUserId = t.AssignedUserId,
-                Title = t.Title
-            }).ToList();
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(userId, Roles.RegularUser))
-                .ReturnsAsync(true);
-
-            _taskItemRepositoryMock.Setup(x => x.GetTasksByUserIdAsync(userId))
-                .ReturnsAsync(taskItems);
-
-            _mapperMock.Setup(x => x.Map<IReadOnlyList<TaskItemDto>>(taskItems))
-                .Returns(taskItemDtos);
-
-            var result = await _handler.Handle(query, CancellationToken.None);
-
-            result.IsSuccess.Should().BeTrue();
-            result.Value.Should().BeEquivalentTo(taskItemDtos);
-
-            _taskItemRepositoryMock.Verify(x => x.GetTasksByUserIdAsync(userId), Times.Once);
+            _dbContext.Projects.Add(project);
+            _dbContext.TaskItems.AddRange(tasks);
+            _dbContext.SaveChanges();
         }
 
         [Fact]
-        public async Task Handle_WithNonRegularUser_ShouldReturnFailureResult()
+        public async Task Handle_ShouldReturnTasksAssignedToCurrentUser()
         {
-            var userId = Guid.NewGuid().ToString();
-            var query = new GetTasksForUserQuery { UserId = userId };
+            // Arrange
+            var query = new GetTasksForUserQuery();
+            _mockCurrentUser.Setup(u => u.Id).Returns(_testUserId1);
 
-            _userServiceMock.Setup(x => x.IsInRoleAsync(userId, Roles.RegularUser))
-                .ReturnsAsync(false);
-
+            // Act
             var result = await _handler.Handle(query, CancellationToken.None);
 
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("User not found or not authorized");
-
-            _taskItemRepositoryMock.Verify(x => x.GetTasksByUserIdAsync(It.IsAny<string>()), Times.Never);
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(2);
+            result.Select(t => t.Id).Should().Contain(_task1Id);
+            result.Select(t => t.Id).Should().Contain(_task3Id);
+            result.Select(t => t.Id).Should().NotContain(_task2Id);
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
         }
 
         [Fact]
-        public async Task Handle_WithEmptyTaskList_ShouldReturnEmptyList()
+        public async Task Handle_ShouldReturnEmptyList_WhenNoTasksAssignedToCurrentUser()
         {
-            var userId = Guid.NewGuid().ToString();
-            var query = new GetTasksForUserQuery { UserId = userId };
+            // Arrange
+            var query = new GetTasksForUserQuery();
+            _mockCurrentUser.Setup(u => u.Id).Returns("user-with-no-tasks");
 
-            var taskItems = new List<TaskItem>();
-            var taskItemDtos = new List<TaskItemDto>();
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(userId, Roles.RegularUser))
-                .ReturnsAsync(true);
-
-            _taskItemRepositoryMock.Setup(x => x.GetTasksByUserIdAsync(userId))
-                .ReturnsAsync(taskItems);
-
-            _mapperMock.Setup(x => x.Map<IReadOnlyList<TaskItemDto>>(taskItems))
-                .Returns(taskItemDtos);
-
+            // Act
             var result = await _handler.Handle(query, CancellationToken.None);
 
-            result.IsSuccess.Should().BeTrue();
-            result.Value.Should().BeEmpty();
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().BeEmpty();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldThrowUnauthorizedAccessException_WhenUserIsNotAuthenticated()
+        {
+            // Arrange
+            var query = new GetTasksForUserQuery();
+            _mockCurrentUser.Setup(u => u.Id).Returns((string?)null);
+
+            // Act
+            Func<Task> act = async () => await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
+        }
+
+        public void Dispose()
+        {
+            _dbContext?.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -1,55 +1,50 @@
-﻿using FluentValidation;
-using MediatR;
-using TaskManagement.Api.Features.TaskItems.Repositories.Interfaces;
+﻿using MediatR;
+using Microsoft.EntityFrameworkCore;
+using TaskManagement.Api.Features.TaskItems.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Models;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 {
-    public class DeleteTaskItemCommandHandler : IRequestHandler<DeleteTaskItemCommand, Result<bool>>
+    public class DeleteTaskItemCommandHandler : IRequestHandler<DeleteTaskItemCommand>
     {
-        private readonly ITaskItemRepository _taskItemRepository;
-        private readonly IUserService _userService;
-        private readonly IValidator<DeleteTaskItemCommand> _validator;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly ICurrentUserService _currentUserService;
 
         public DeleteTaskItemCommandHandler(
-            ITaskItemRepository taskItemRepository,
-            IUserService userService,
-            IValidator<DeleteTaskItemCommand> validator)
+            TaskManagementDbContext dbContext,
+            ICurrentUserService currentUserService)
         {
-            _taskItemRepository = taskItemRepository;
-            _userService = userService;
-            _validator = validator;
+            _dbContext = dbContext;
+            _currentUserService = currentUserService;
         }
 
-        public async Task<Result<bool>> Handle(DeleteTaskItemCommand request, CancellationToken cancellationToken)
+        public async Task Handle(DeleteTaskItemCommand request, CancellationToken cancellationToken)
         {
-            var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-            if (!validationResult.IsValid)
+            var currentUserId = _currentUserService.Id;
+            if (string.IsNullOrEmpty(currentUserId))
             {
-                return Result<bool>.Failure(validationResult.Errors.First().ErrorMessage);
+                throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var taskItem = await _taskItemRepository.GetByIdAsync(request.Id);
+            var taskItem = await _dbContext.TaskItems
+                 .Include(t => t.Project)
+                 .FirstOrDefaultAsync(t => t.Id == request.Id, cancellationToken);
+
             if (taskItem == null)
             {
-                return Result<bool>.Failure("Task not found");
+                throw new NotFoundException(nameof(TaskItem), request.Id);
             }
 
-            var requestingUser = await _userService.GetUserByIdAsync(request.RequestingUserId);
-            if (requestingUser == null)
+            bool isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
+            if (!isProjectOwner)
             {
-                return Result<bool>.Failure("Requesting user not found");
+                throw new ForbiddenAccessException("User is not authorized to delete this task item.");
             }
 
-            if (!await _userService.IsInRoleAsync(requestingUser.Id, Roles.ProjectManager))
-            {
-                return Result<bool>.Failure("User is not authorized to delete tasks");
-            }
-
-            await _taskItemRepository.DeleteAsync(taskItem);
-            return Result<bool>.Success(true);
+            _dbContext.TaskItems.Remove(taskItem);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 }

@@ -1,185 +1,154 @@
 ﻿using AutoMapper;
 using FluentAssertions;
-using FluentValidation;
-using FluentValidation.Results;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Commands.Handlers;
+using TaskManagement.Api.Features.Projects.Mappings;
 using TaskManagement.Api.Features.Projects.Models;
-using TaskManagement.Api.Features.Projects.Models.DTOs;
-using TaskManagement.Api.Features.Projects.Repositories.Interfaces;
-using TaskManagement.Api.Features.Users.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Common.Exceptions;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
 {
-    public class UpdateProjectCommandHandlerTests
+    public class UpdateProjectCommandHandlerTests : IDisposable
     {
-        private readonly Mock<IProjectRepository> _projectRepositoryMock;
-        private readonly Mock<IUserService> _userServiceMock;
-        private readonly Mock<IMapper> _mapperMock;
-        private readonly Mock<IValidator<UpdateProjectCommand>> _validatorMock;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly IMapper _mapper;
+        private readonly Mock<ICurrentUserService> _mockCurrentUser;
         private readonly UpdateProjectCommandHandler _handler;
+
+        private readonly Guid _projectIdToUpdate = Guid.NewGuid();
+        private readonly string _ownerUserId = "user-owner-123";
+        private readonly string _otherUserId = "user-other-789";
+        private readonly Project _initialProjectState;
 
         public UpdateProjectCommandHandlerTests()
         {
-            _projectRepositoryMock = new Mock<IProjectRepository>();
-            _userServiceMock = new Mock<IUserService>();
-            _mapperMock = new Mock<IMapper>();
-            _validatorMock = new Mock<IValidator<UpdateProjectCommand>>();
+            var options = new DbContextOptionsBuilder<TaskManagementDbContext>()
+                .UseInMemoryDatabase(databaseName: $"TestDb_UpdateProject_{Guid.NewGuid()}")
+                .Options;
+            _mockCurrentUser = new Mock<ICurrentUserService>();
+            _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
+
+            var mappingConfig = new MapperConfiguration(cfg => cfg.AddProfile<ProjectMappingProfile>());
+            _mapper = mappingConfig.CreateMapper();
+
+            _initialProjectState = SeedDatabase();
 
             _handler = new UpdateProjectCommandHandler(
-                _projectRepositoryMock.Object,
-                _userServiceMock.Object,
-                _mapperMock.Object,
-                _validatorMock.Object
-            );
+                _dbContext,
+                _mockCurrentUser.Object,
+                _mapper);
+        }
+
+        private Project SeedDatabase()
+        {
+            var project = new Project
+            {
+                Id = _projectIdToUpdate,
+                Name = "Original Name",
+                Description = "Original Desc",
+                OwnerUserId = _ownerUserId,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                CreatedByUserId = _ownerUserId,
+                LastModifiedAt = DateTime.UtcNow.AddDays(-1),
+                LastModifiedByUserId = _ownerUserId
+            };
+            _dbContext.Projects.Add(project);
+            _dbContext.SaveChanges();
+            return project;
         }
 
         [Fact]
-        public async Task Handle_WithValidRequest_ShouldReturnSuccessResult()
+        public async Task Handle_ShouldUpdateProject_WhenRequestIsValidAndUserIsOwner()
         {
-            var projectId = Guid.NewGuid();
+            // Arrange
             var command = new UpdateProjectCommand
             {
-                Id = projectId,
-                Name = "Updated Project",
-                Description = "Updated Description",
-                UserId = "user123"
+                Id = _projectIdToUpdate,
+                Name = "Updated Name",
+                Description = "Updated Desc"
             };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_ownerUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(It.IsAny<string>())).Returns(false);
 
-            var existingProject = new Project
-            {
-                Id = projectId,
-                Name = "Old Name",
-                Description = "Old Description",
-                UserId = command.UserId
-            };
+            // Act
+            var resultDto = await _handler.Handle(command, CancellationToken.None);
 
-            var updatedProjectDto = new ProjectDto
-            {
-                Id = projectId,
-                Name = command.Name,
-                Description = command.Description,
-                UserId = command.UserId,
-                UserName = "testuser"
-            };
+            // Assert
+            resultDto.Should().NotBeNull();
+            resultDto.Id.Should().Be(_projectIdToUpdate);
+            resultDto.Name.Should().Be(command.Name);
+            resultDto.Description.Should().Be(command.Description);
 
-            var validationResult = new ValidationResult();
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
+            var updatedProject = await _dbContext.Projects.FindAsync(_projectIdToUpdate);
+            updatedProject.Should().NotBeNull();
+            updatedProject!.Name.Should().Be(command.Name);
+            updatedProject.Description.Should().Be(command.Description);
+            updatedProject.LastModifiedAt.Should().BeAfter(_initialProjectState.LastModifiedAt);
+            updatedProject.LastModifiedByUserId.Should().Be(_ownerUserId);
 
-            _projectRepositoryMock.Setup(x => x.GetByIdAsync(projectId))
-                .ReturnsAsync(existingProject);
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.UserId, Roles.ProjectManager))
-                .ReturnsAsync(true);
-
-            _mapperMock.Setup(x => x.Map<ProjectDto>(It.IsAny<Project>()))
-                .Returns(updatedProjectDto);
-
-            _userServiceMock.Setup(x => x.GetUserByIdAsync(command.UserId))
-                .ReturnsAsync(new User { UserName = "testuser" });
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeTrue();
-            result.Value.Should().BeEquivalentTo(updatedProjectDto);
-            _projectRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<Project>()), Times.Once);
+            _mockCurrentUser.Verify(u => u.Id, Times.Exactly(2));
         }
 
         [Fact]
-        public async Task Handle_WithNonExistentProject_ShouldReturnFailureResult()
+        public async Task Handle_ShouldThrowNotFoundException_WhenProjectDoesNotExist()
         {
-            var command = new UpdateProjectCommand { Id = Guid.NewGuid() };
+            // Arrange
+            var command = new UpdateProjectCommand { Id = Guid.NewGuid(), Name = "Updated Name" };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_ownerUserId);
 
-            _projectRepositoryMock.Setup(x => x.GetByIdAsync(command.Id))
-                .ReturnsAsync((Project?)null);
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            var validationResult = new ValidationResult();
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("Project not found");
-            _projectRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<Project>()), Times.Never);
+            // Assert
+            await act.Should().ThrowAsync<NotFoundException>();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
         }
 
         [Fact]
-        public async Task Handle_WithUnauthorizedUser_ShouldReturnFailureResult()
+        public async Task Handle_ShouldThrowForbiddenAccessException_WhenUserIsNotOwner()
         {
-            var projectId = Guid.NewGuid();
-            var projectName = "project123";
+            // Arrange
+            var command = new UpdateProjectCommand { Id = _projectIdToUpdate, Name = "Updated Name" };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_otherUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(It.IsAny<string>())).Returns(false);
 
-            var command = new UpdateProjectCommand
-            {
-                Id = projectId,
-                Name = projectName,
-                UserId = "user123"
-            };
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            var existingProject = new Project
-            {
-                Id = projectId,
-                Name = projectName,
-                UserId = "differentUser"
-            };
+            // Assert
+            await act.Should().ThrowAsync<ForbiddenAccessException>();
+            _mockCurrentUser.Verify(u => u.Id, Times.Once);
 
-            var validationResult = new ValidationResult();
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
-
-            _projectRepositoryMock.Setup(x => x.GetByIdAsync(projectId))
-                .ReturnsAsync(existingProject);
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.UserId, Roles.ProjectManager))
-                .ReturnsAsync(false);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("User is not authorized to update projects");
-            _projectRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<Project>()), Times.Never);
+            var project = await _dbContext.Projects.FindAsync(_projectIdToUpdate);
+            project!.Name.Should().Be(_initialProjectState.Name);
         }
 
         [Fact]
-        public async Task Handle_WithInvalidUser_ShouldReturnFailureResult()
+        public async Task Handle_ShouldThrowUnauthorizedAccessException_WhenUserIsNotAuthenticated()
         {
-            var projectId = Guid.NewGuid();
-            var projectName = "project123";
+            // Arrange
+            var command = new UpdateProjectCommand { Id = _projectIdToUpdate, Name = "Updated Name" };
+            _mockCurrentUser.Setup(u => u.Id).Returns((string?)null);
 
-            var command = new UpdateProjectCommand
-            {
-                Id = projectId,
-                Name = projectName,
-                UserId = "user123"
-            };
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
-            var existingProject = new Project
-            {
-                Id = projectId,
-                Name = projectName,
-                UserId = "differentUser"
-            };
+            // Assert
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        }
 
-            var validationResult = new ValidationResult();
-            _validatorMock.Setup(x => x.ValidateAsync(command, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(validationResult);
+        // Optional: Test case for Administrator override if implemented in handler
+        // [Fact]
+        // public async Task Handle_ShouldUpdateProject_WhenUserIsAdministratorButNotOwner() { ... }
 
-            _projectRepositoryMock.Setup(x => x.GetByIdAsync(projectId))
-                .ReturnsAsync(existingProject);
-
-            _userServiceMock.Setup(x => x.IsInRoleAsync(command.UserId, Roles.ProjectManager))
-                .ReturnsAsync(true);
-
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Be("User is not authorized to update this project");
-            _projectRepositoryMock.Verify(x => x.UpdateAsync(It.IsAny<Project>()), Times.Never);
+        public void Dispose()
+        {
+            _dbContext?.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -1,40 +1,45 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using TaskManagement.Api.Features.TaskItems.Models.DTOs;
-using TaskManagement.Api.Features.TaskItems.Repositories.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Models;
-using TaskManagement.Shared.Models;
+using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
 {
-    public class GetTasksForUserQueryHandler : IRequestHandler<GetTasksForUserQuery, Result<IReadOnlyList<TaskItemDto>>>
+    public class GetTasksForUserQueryHandler : IRequestHandler<GetTasksForUserQuery, IReadOnlyList<TaskItemDto>>
     {
-        private readonly ITaskItemRepository _taskItemRepository;
-        private readonly IUserService _userService;
+        private readonly TaskManagementDbContext _dbContext;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
 
         public GetTasksForUserQueryHandler(
-            ITaskItemRepository taskItemRepository,
-            IUserService userService,
+            TaskManagementDbContext dbContext,
+            ICurrentUserService currentUserService,
             IMapper mapper)
         {
-            _taskItemRepository = taskItemRepository;
-            _userService = userService;
+            _dbContext = dbContext;
+            _currentUserService = currentUserService;
             _mapper = mapper;
         }
 
-        public async Task<Result<IReadOnlyList<TaskItemDto>>> Handle(GetTasksForUserQuery request, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<TaskItemDto>> Handle(GetTasksForUserQuery request, CancellationToken cancellationToken)
         {
-            if (!await _userService.IsInRoleAsync(request.UserId, Roles.RegularUser))
+            var currentUserId = _currentUserService.Id;
+            if (string.IsNullOrEmpty(currentUserId))
             {
-                return Result<IReadOnlyList<TaskItemDto>>.Failure("User not found or not authorized");
+                throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var tasks = await _taskItemRepository.GetTasksByUserIdAsync(request.UserId);
-            var taskDtos = _mapper.Map<IReadOnlyList<TaskItemDto>>(tasks);
+            var taskDtos = await _dbContext.TaskItems
+                .Where(t => t.AssignedUserId == currentUserId)
+                .OrderByDescending(t => t.DueDate)
+                .ThenBy(t => t.Title)
+                .ProjectTo<TaskItemDto>(_mapper.ConfigurationProvider)
+                .ToListAsync(cancellationToken);
 
-            return Result<IReadOnlyList<TaskItemDto>>.Success(taskDtos);
+            return taskDtos;
         }
     }
 }
