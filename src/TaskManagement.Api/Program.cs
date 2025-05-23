@@ -34,7 +34,9 @@ try
     builder.Services.AddDatabaseConfiguration(builder.Configuration);
     builder.Services.AddApiConfiguration();
     builder.Services.AddCorsConfiguration(builder.Configuration);
+
     builder.AddLoggingConfiguration();
+
     builder.Services.AddSwaggerConfiguration(builder);
 
     builder.Services.AddOpenIddictValidation(builder.Configuration, builder.Environment);
@@ -48,7 +50,10 @@ try
 
     var app = builder.Build();
 
-    await app.ApplyMigrationsAsync();
+    if (!app.Environment.IsEnvironment("Testing"))
+    {
+        await app.ApplyMigrationsAsync();
+    }
 
     app.ConfigureRequestPipeline(builder.Environment);
 
@@ -64,3 +69,6 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Make the implicit Program class public so test projects can access it
+public partial class Program { }

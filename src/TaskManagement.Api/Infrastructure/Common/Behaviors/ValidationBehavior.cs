@@ -1,12 +1,11 @@
 ﻿using FluentValidation;
 using MediatR;
+using ValidationException = TaskManagement.Api.Infrastructure.Common.Exceptions.ValidationException;
 
 namespace TaskManagement.Api.Infrastructure.Common.Behaviors
 {
     public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
        where TRequest : IRequest<TResponse>
-        // Optionally constrain TResponse if all handlers return Result<T> or just T
-        // where TResponse : Result // Example constraint
     {
         private readonly IEnumerable<IValidator<TRequest>> _validators;
 

@@ -11,8 +11,8 @@ namespace TaskManagement.Api.Infrastructure.ExceptionHandling
 
         public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IHostEnvironment env)
         {
-            _logger = logger;
-            _env = env;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _env = env ?? throw new ArgumentNullException(nameof(env));
         }
 
         public async ValueTask<bool> TryHandleAsync(
@@ -20,23 +20,44 @@ namespace TaskManagement.Api.Infrastructure.ExceptionHandling
             Exception exception,
             CancellationToken cancellationToken)
         {
-            _logger.LogError(exception, "ExceptionHandler caught exception: {ErrorMessage}", exception.Message);
+            _logger.LogError(exception, "An unhandled exception occurred. Path: {Path}, Message: {ErrorMessage}",
+                httpContext.Request.Path, exception.Message);
 
-            int statusCode = StatusCodes.Status500InternalServerError;
-            string title = "An unexpected error occurred.";
-            string detail = exception.Message;
-            string type = "https://tools.ietf.org/html/rfc7231#section-6.6.1";
-            IDictionary<string, object?> extensions = null;
+            ProblemDetails problemDetails = CreateProblemDetails(httpContext, exception);
+
+            httpContext.Response.StatusCode = problemDetails.Status ?? StatusCodes.Status500InternalServerError;
+            httpContext.Response.ContentType = "application/problem+json";
+
+            await httpContext.Response.WriteAsJsonAsync(problemDetails, problemDetails.GetType(), cancellationToken: cancellationToken);
+
+            return true;
+        }
+
+        private ProblemDetails CreateProblemDetails(HttpContext httpContext, Exception exception)
+        {
+            int statusCode;
+            string title;
+            string detail;
+            string type;
+            IDictionary<string, string[]> errors = null;
 
             switch (exception)
             {
-                case ValidationException validationEx:
+                case ValidationException customValidationEx:
                     statusCode = StatusCodes.Status400BadRequest;
                     title = "Validation Error";
-                    detail = "One or more validation errors occurred.";
+                    detail = customValidationEx.Message;
                     type = "https://tools.ietf.org/html/rfc7231#section-6.5.1";
-                    extensions = validationEx.Errors.ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value);
-                    break;
+                    errors = customValidationEx.Errors;
+
+                    return new ValidationProblemDetails(errors)
+                    {
+                        Status = statusCode,
+                        Title = title,
+                        Detail = detail,
+                        Type = type,
+                        Instance = httpContext.Request.Path
+                    };
 
                 case NotFoundException notFoundEx:
                     statusCode = StatusCodes.Status404NotFound;
@@ -59,35 +80,24 @@ namespace TaskManagement.Api.Infrastructure.ExceptionHandling
                     type = "https://tools.ietf.org/html/rfc7235#section-3.1";
                     break;
 
-                case AppException appEx:
-                    statusCode = appEx.StatusCode;
-                    title = "Internal Server Error";
-                    detail = appEx.Message;
+                default:
+                    statusCode = StatusCodes.Status500InternalServerError;
+                    title = "An Internal Server Error Occurred";
+                    detail = _env.IsDevelopment()
+                        ? $"An unexpected error occurred: {exception.Message} | StackTrace: {exception.StackTrace}"
+                        : "An unexpected error occurred. Please try again later.";
+                    type = "https://tools.ietf.org/html/rfc7231#section-6.6.1";
                     break;
             }
 
-            var problemDetails = new ProblemDetails
+            return new ProblemDetails
             {
                 Status = statusCode,
                 Title = title,
-                Detail = _env.IsDevelopment() ? $"{detail} | StackTrace: {exception.StackTrace}" : detail,
+                Detail = detail,
                 Type = type,
                 Instance = httpContext.Request.Path
             };
-
-            if (extensions != null)
-            {
-                foreach (var ext in extensions)
-                {
-                    problemDetails.Extensions.Add(ext.Key, ext.Value);
-                }
-            }
-
-            httpContext.Response.StatusCode = statusCode;
-            httpContext.Response.ContentType = "application/problem+json";
-            await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
-
-            return true;
         }
     }
 }
