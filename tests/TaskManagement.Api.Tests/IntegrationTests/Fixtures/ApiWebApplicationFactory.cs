@@ -88,19 +88,16 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Fixtures
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApiWebApplicationFactory<TEntryPoint>>>();
 
             try
             {
-                logger.LogInformation("Seeding database for integration tests.");
-
                 await seedAction(db);
                 await db.SaveChangesAsync();
-                logger.LogInformation("Database seeded successfully.");
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An error occurred seeding the database with test data.");
+                var logger = scope.ServiceProvider.GetService<ILogger<ApiWebApplicationFactory<TEntryPoint>>>();
+                logger?.LogError(ex, "An error occurred seeding the database with test data.");
                 throw;
             }
         }

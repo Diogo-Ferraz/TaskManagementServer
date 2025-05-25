@@ -9,7 +9,8 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
             builder.Host.UseSerilog((context, services, configuration) => configuration
                 .ReadFrom.Configuration(context.Configuration)
                 .ReadFrom.Services(services)
-                .Enrich.FromLogContext());
+                .Enrich.FromLogContext(),
+                true);
 
             return builder;
         }

@@ -9,8 +9,8 @@ using TaskManagement.Auth.Tests.TestHelpers.Data;
 
 namespace TaskManagement.Auth.Tests.TestHelpers.Fixtures
 {
-    public class CustomWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup>, IAsyncLifetime
-    where TStartup : class
+    public class CustomWebApplicationFactory<TEntryPoint> : WebApplicationFactory<TEntryPoint>, IAsyncLifetime
+    where TEntryPoint : class
     {
         private readonly string _databaseName;
         private IServiceScopeFactory _scopeFactory;
@@ -55,7 +55,7 @@ namespace TaskManagement.Auth.Tests.TestHelpers.Fixtures
             }
             catch (Exception ex)
             {
-                var logger = scope.ServiceProvider.GetService<ILogger<CustomWebApplicationFactory<TStartup>>>();
+                var logger = scope.ServiceProvider.GetService<ILogger<CustomWebApplicationFactory<TEntryPoint>>>();
                 logger?.LogError(ex, "An error occurred seeding the database. Error: {Message}", ex.Message);
             }
         }

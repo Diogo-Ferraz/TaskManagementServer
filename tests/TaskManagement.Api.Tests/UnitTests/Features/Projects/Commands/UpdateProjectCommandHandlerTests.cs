@@ -74,6 +74,8 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
             _mockCurrentUser.Setup(u => u.Id).Returns(_ownerUserId);
             _mockCurrentUser.Setup(u => u.IsInRole(It.IsAny<string>())).Returns(false);
 
+            var originalLastModifiedAt = _initialProjectState.LastModifiedAt;
+
             // Act
             var resultDto = await _handler.Handle(command, CancellationToken.None);
 
@@ -87,7 +89,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
             updatedProject.Should().NotBeNull();
             updatedProject!.Name.Should().Be(command.Name);
             updatedProject.Description.Should().Be(command.Description);
-            updatedProject.LastModifiedAt.Should().BeAfter(_initialProjectState.LastModifiedAt);
+            updatedProject.LastModifiedAt.Should().BeAfter(originalLastModifiedAt);
             updatedProject.LastModifiedByUserId.Should().Be(_ownerUserId);
 
             _mockCurrentUser.Verify(u => u.Id, Times.Exactly(2));
