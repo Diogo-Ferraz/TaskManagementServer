@@ -38,12 +38,9 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
                     {
                         throw new InvalidOperationException("The client swagger-client is not configured properly in the appsettings.json file.");
                     }
+
                     options.OAuthClientId(swaggerClient.ClientId);
-                    options.OAuthClientSecret(swaggerClient.ClientSecret);
-                    if (swaggerClient.RequirePkce)
-                    {
-                        options.OAuthUsePkce();
-                    }
+                    options.OAuthUsePkce();
                 });
             }
 

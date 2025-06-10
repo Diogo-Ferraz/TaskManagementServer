@@ -22,7 +22,7 @@ namespace TaskManagement.Auth.Features.Authorization.Services
             await using var scope = _serviceProvider.CreateAsyncScope();
 
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            await context.Database.EnsureCreatedAsync();
+            await context.Database.EnsureCreatedAsync(cancellationToken);
 
             var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
 
@@ -37,7 +37,6 @@ namespace TaskManagement.Auth.Features.Authorization.Services
                 var applicationDescriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientSettings.ClientId,
-                    ClientSecret = clientSettings.ClientSecret,
                     ConsentType = ConsentTypes.Explicit,
                     DisplayName = clientSettings.DisplayName,
                     Permissions =
@@ -50,6 +49,10 @@ namespace TaskManagement.Auth.Features.Authorization.Services
                         Permissions.Scopes.Email,
                         Permissions.Scopes.Profile,
                         Permissions.Scopes.Roles
+                    },
+                    Requirements =
+                    {
+                        Requirements.Features.ProofKeyForCodeExchange
                     }
                 };
 
@@ -66,11 +69,6 @@ namespace TaskManagement.Auth.Features.Authorization.Services
                 foreach (var extraScope in clientSettings.AllowedScopes)
                 {
                     applicationDescriptor.Permissions.Add($"{Permissions.Prefixes.Scope}{extraScope}");
-                }
-
-                if (clientSettings.RequirePkce)
-                {
-                    applicationDescriptor.Requirements.Add(Requirements.Features.ProofKeyForCodeExchange);
                 }
 
                 await manager.CreateAsync(applicationDescriptor, cancellationToken);

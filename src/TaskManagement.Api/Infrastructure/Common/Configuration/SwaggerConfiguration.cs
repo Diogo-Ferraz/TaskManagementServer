@@ -9,7 +9,7 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
         {
             services.AddSwaggerGen(options =>
             {
-                options.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+                //options.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
                 var clientSettings = builder.Configuration.GetSection("ClientSettings").Get<ClientSettings>();
                 if (clientSettings == null)
                 {
