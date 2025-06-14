@@ -23,7 +23,6 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
 
         private readonly string _ownerUserId = "user-project-owner-update";
         private readonly string _otherUserId = "user-other-update";
-        private readonly string _adminUserId = "admin-user-update";
 
         private const string InitialProjectName = "Initial Project Name";
         private const string InitialProjectDescription = "Initial project description.";
@@ -219,9 +218,5 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
-
-        // TODO: Optional: Add a test case for an Administrator being able to update any project
-        // [Fact]
-        // public async Task UpdateProject_WhenUserIsAdministrator_ShouldReturnOkAndUpdatedDto() { ... }
     }
 }

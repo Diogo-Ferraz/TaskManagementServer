@@ -143,10 +143,6 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
             await act.Should().ThrowAsync<UnauthorizedAccessException>();
         }
 
-        // Optional: Test case for Administrator override if implemented in handler
-        // [Fact]
-        // public async Task Handle_ShouldUpdateProject_WhenUserIsAdministratorButNotOwner() { ... }
-
         public void Dispose()
         {
             _dbContext?.Dispose();

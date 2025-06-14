@@ -20,7 +20,6 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
 
         private readonly string _ownerUserId = "user-project-owner-delete";
         private readonly string _otherUserId = "user-other-delete";
-        private readonly string _adminUserId = "admin-user-delete";
 
         public DeleteProjectEndpointTests(ApiWebApplicationFactory<Program> factory)
         {
@@ -155,9 +154,5 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
-
-        // TODO: Optional: Add a test case for an Administrator being able to delete any project
-        // [Fact]
-        // public async Task DeleteProject_WhenUserIsAdministrator_ShouldReturnNoContentAndDeleteProject() { ... }
     }
 }

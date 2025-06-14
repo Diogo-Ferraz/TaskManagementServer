@@ -6,7 +6,6 @@ using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
-using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.Projects.Commands.Handlers
 {
@@ -42,7 +41,7 @@ namespace TaskManagement.Api.Features.Projects.Commands.Handlers
                 throw new NotFoundException(nameof(Project), request.Id);
             }
 
-            if (project.OwnerUserId != currentUserId && !_currentUserService.IsInRole(Roles.Administrator))
+            if (project.OwnerUserId != currentUserId)
             {
                 throw new ForbiddenAccessException("User is not authorized to update this project.");
             }
