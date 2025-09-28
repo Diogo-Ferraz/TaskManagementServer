@@ -5,9 +5,13 @@ using OpenIddict.Validation.AspNetCore;
 using TaskManagement.Api.Features.TaskItems.Commands;
 using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 using TaskManagement.Api.Features.TaskItems.Queries;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.TaskItems.Controllers
 {
+    /// <summary>
+    /// API controller for managing task items.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
@@ -19,13 +23,22 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         private readonly IMediator _mediator;
         private readonly ILogger<TaskItemsController> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TaskItemsController"/> class.
+        /// </summary>
         public TaskItemsController(IMediator mediator, ILogger<TaskItemsController> logger)
         {
             _mediator = mediator;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Creates a new task item.
+        /// </summary>
+        /// <param name="command">The command containing task item details.</param>
+        /// <returns>The created task item.</returns>
         [HttpPost]
+        [Authorize(Policy = Policies.CanManageTasks)]
         [ProducesResponseType(typeof(TaskItemDto), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -38,6 +51,11 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
             return CreatedAtAction(nameof(GetById), new { id = createdTaskDto.Id }, createdTaskDto);
         }
 
+        /// <summary>
+        /// Retrieves a task item by its ID.
+        /// </summary>
+        /// <param name="id">The ID of the task item.</param>
+        /// <returns>The requested task item.</returns>
         [HttpGet("{id:guid}")]
         [ProducesResponseType(typeof(TaskItemDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -49,6 +67,11 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
             return Ok(taskItemDto);
         }
 
+        /// <summary>
+        /// Retrieves all task items for a specific project.
+        /// </summary>
+        /// <param name="projectId">The ID of the project.</param>
+        /// <returns>A list of task items for the project.</returns>
         [HttpGet("project/{projectId:guid}")]
         [ProducesResponseType(typeof(IReadOnlyList<TaskItemDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -60,7 +83,14 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
             return Ok(taskDtos);
         }
 
+        /// <summary>
+        /// Updates an existing task item.
+        /// </summary>
+        /// <param name="id">The ID of the task item to update.</param>
+        /// <param name="command">The command containing the updated task item details.</param>
+        /// <returns>The updated task item.</returns>
         [HttpPut("{id:guid}")]
+        [Authorize(Policy = Policies.CanManageTasks)]
         [ProducesResponseType(typeof(TaskItemDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -76,7 +106,12 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
             return Ok(updatedTaskDto);
         }
 
+        /// <summary>
+        /// Deletes a task item.
+        /// </summary>
+        /// <param name="id">The ID of the task item to delete.</param>
         [HttpDelete("{id:guid}")]
+        [Authorize(Policy = Policies.CanManageTasks)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

@@ -5,9 +5,13 @@ using OpenIddict.Validation.AspNetCore;
 using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Features.Projects.Queries;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.Projects.Controllers
 {
+    /// <summary>
+    /// API controller for managing projects.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
@@ -16,13 +20,26 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         private readonly IMediator _mediator;
         private readonly ILogger<ProjectsController> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ProjectsController"/> class.
+        /// </summary>
         public ProjectsController(IMediator mediator, ILogger<ProjectsController> logger)
         {
             _mediator = mediator;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Creates a new project.
+        /// </summary>
+        /// <param name="command">The project creation command.</param>
+        /// <returns>The created project.</returns>
+        /// <response code="201">Project created successfully.</response>
+        /// <response code="400">Invalid request data.</response>
+        /// <response code="401">Unauthorized.</response>
+        /// <response code="403">Forbidden.</response>
         [HttpPost]
+        [Authorize(Policy = Policies.CanManageProjects)]
         [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -34,7 +51,19 @@ namespace TaskManagement.Api.Features.Projects.Controllers
             return CreatedAtAction(nameof(GetById), new { id = createdProjectDto.Id }, createdProjectDto);
         }
 
+        /// <summary>
+        /// Updates an existing project.
+        /// </summary>
+        /// <param name="id">The ID of the project to update.</param>
+        /// <param name="command">The project update command.</param>
+        /// <returns>The updated project.</returns>
+        /// <response code="200">Project updated successfully.</response>
+        /// <response code="400">Invalid request data or ID mismatch.</response>
+        /// <response code="401">Unauthorized.</response>
+        /// <response code="403">Forbidden.</response>
+        /// <response code="404">Project not found.</response>
         [HttpPut("{id:guid}")]
+        [Authorize(Policy = Policies.CanManageProjects)]
         [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -51,7 +80,17 @@ namespace TaskManagement.Api.Features.Projects.Controllers
             return Ok(updatedProjectDto);
         }
 
+        /// <summary>
+        /// Deletes a project by ID.
+        /// </summary>
+        /// <param name="id">The ID of the project to delete.</param>
+        /// <returns>No content.</returns>
+        /// <response code="204">Project deleted successfully.</response>
+        /// <response code="401">Unauthorized.</response>
+        /// <response code="403">Forbidden.</response>
+        /// <response code="404">Project not found.</response>
         [HttpDelete("{id:guid}")]
+        [Authorize(Policy = Policies.CanManageProjects)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -63,7 +102,17 @@ namespace TaskManagement.Api.Features.Projects.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Retrieves a project by ID.
+        /// </summary>
+        /// <param name="id">The ID of the project to retrieve.</param>
+        /// <returns>The project details.</returns>
+        /// <response code="200">Project found.</response>
+        /// <response code="401">Unauthorized.</response>
+        /// <response code="403">Forbidden.</response>
+        /// <response code="404">Project not found.</response>
         [HttpGet("{id:guid}")]
+        [Authorize(Policy = Policies.CanManageProjects)]
         [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -75,7 +124,14 @@ namespace TaskManagement.Api.Features.Projects.Controllers
             return Ok(projectDto);
         }
 
+        /// <summary>
+        /// Retrieves the list of projects for the current user.
+        /// </summary>
+        /// <returns>List of projects owned by the current user.</returns>
+        /// <response code="200">Projects retrieved successfully.</response>
+        /// <response code="401">Unauthorized.</response>
         [HttpGet("my-projects")]
+        [Authorize(Policy = Policies.CanViewOwnProjects)]
         [ProducesResponseType(typeof(IReadOnlyList<ProjectDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetMyProjects()

@@ -1,6 +1,7 @@
 ﻿using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Validation.AspNetCore;
 using TaskManagement.Api.Infrastructure.Security.Settings;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Infrastructure.Security.Configuration
 {
@@ -44,7 +45,13 @@ namespace TaskManagement.Api.Infrastructure.Security.Configuration
                 });
 
             services.AddAuthentication(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
-            services.AddAuthorization();
+            services.AddAuthorizationBuilder()
+                .AddPolicy(Policies.CanManageProjects, policy =>
+                    policy.RequireRole(Roles.Administrator, Roles.ProjectManager))
+                .AddPolicy(Policies.CanManageTasks, policy =>
+                    policy.RequireRole(Roles.Administrator, Roles.User))
+                .AddPolicy(Policies.CanViewOwnProjects, policy =>
+                    policy.RequireRole(Roles.Administrator, Roles.ProjectManager, Roles.User));
 
             return services;
         }
