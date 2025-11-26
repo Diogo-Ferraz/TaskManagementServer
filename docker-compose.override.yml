@@ -19,6 +19,15 @@ services:
       - ClientSettings__Clients__0__AllowedCorsOrigins__2=https://localhost:8081
       - ClientSettings__Clients__0__AllowedScopes__0=api1
       - ClientSettings__Clients__0__RequirePkce=true
+      - SeedUsers__0__Email=demo-admin@example.com
+      - SeedUsers__0__Password=Demo123!
+      - SeedUsers__0__Role=Administrator
+      - SeedUsers__1__Email=demo-manager@example.com
+      - SeedUsers__1__Password=Demo123!
+      - SeedUsers__1__Role=ProjectManager
+      - SeedUsers__2__Email=demo-user@example.com
+      - SeedUsers__2__Password=Demo123!
+      - SeedUsers__2__Role=User
 
   api-service:
     extra_hosts:
