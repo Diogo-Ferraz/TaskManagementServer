@@ -1,5 +1,4 @@
-﻿using FluentValidation;
-using TaskManagement.Api.Features.TaskItems.Commands;
+﻿using TaskManagement.Api.Features.TaskItems.Commands;
 using TaskManagement.Api.Features.TaskItems.Mappings;
 
 namespace TaskManagement.Api.Features.TaskItems.Configuration
@@ -10,7 +9,6 @@ namespace TaskManagement.Api.Features.TaskItems.Configuration
         {
             services.AddAutoMapper(typeof(TaskItemMappingProfile).Assembly);
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateTaskItemCommand).Assembly));
-            services.AddValidatorsFromAssembly(typeof(CreateTaskItemCommandValidator).Assembly);
 
             return services;
         }

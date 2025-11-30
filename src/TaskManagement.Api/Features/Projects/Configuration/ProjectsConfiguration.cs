@@ -1,5 +1,4 @@
-﻿using FluentValidation;
-using TaskManagement.Api.Features.Projects.Commands;
+﻿using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Mappings;
 
 namespace TaskManagement.Api.Features.Projects.Configuration
@@ -10,7 +9,6 @@ namespace TaskManagement.Api.Features.Projects.Configuration
         {
             services.AddAutoMapper(typeof(ProjectMappingProfile).Assembly);
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateProjectCommand).Assembly));
-            services.AddValidatorsFromAssembly(typeof(CreateProjectCommandValidator).Assembly);
 
             return services;
         }
