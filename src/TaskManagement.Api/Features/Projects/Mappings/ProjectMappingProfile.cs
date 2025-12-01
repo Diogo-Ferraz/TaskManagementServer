@@ -19,8 +19,10 @@ namespace TaskManagement.Api.Features.Projects.Mappings
                  .ForMember(dest => dest.TaskItems, opt => opt.Ignore())
                  .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
                  .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+                 .ForMember(dest => dest.CreatedByUserName, opt => opt.Ignore())
                  .ForMember(dest => dest.LastModifiedAt, opt => opt.Ignore())
-                 .ForMember(dest => dest.LastModifiedByUserId, opt => opt.Ignore());
+                 .ForMember(dest => dest.LastModifiedByUserId, opt => opt.Ignore())
+                 .ForMember(dest => dest.LastModifiedByUserName, opt => opt.Ignore());
 
             CreateMap<UpdateProjectCommand, Project>()
                  .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -29,8 +31,10 @@ namespace TaskManagement.Api.Features.Projects.Mappings
                  .ForMember(dest => dest.TaskItems, opt => opt.Ignore())
                  .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
                  .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+                 .ForMember(dest => dest.CreatedByUserName, opt => opt.Ignore())
                  .ForMember(dest => dest.LastModifiedAt, opt => opt.Ignore())
-                 .ForMember(dest => dest.LastModifiedByUserId, opt => opt.Ignore());
+                 .ForMember(dest => dest.LastModifiedByUserId, opt => opt.Ignore())
+                 .ForMember(dest => dest.LastModifiedByUserName, opt => opt.Ignore());
         }
     }
 }

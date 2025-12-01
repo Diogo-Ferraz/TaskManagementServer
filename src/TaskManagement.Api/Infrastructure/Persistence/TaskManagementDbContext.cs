@@ -60,6 +60,7 @@ namespace TaskManagement.Api.Infrastructure.Persistence
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var currentUserId = _currentUserService?.Id ?? "SYSTEM";
+            var currentUserName = _currentUserService?.UserName ?? "SYSTEM";
 
             foreach (var entry in ChangeTracker.Entries<BaseEntity>())
             {
@@ -70,16 +71,20 @@ namespace TaskManagement.Api.Infrastructure.Persistence
                     case EntityState.Added:
                         entry.Entity.CreatedAt = now;
                         entry.Entity.CreatedByUserId = currentUserId;
+                        entry.Entity.CreatedByUserName = currentUserName;
                         entry.Entity.LastModifiedAt = now;
                         entry.Entity.LastModifiedByUserId = currentUserId;
+                        entry.Entity.LastModifiedByUserName = currentUserName;
                         break;
 
                     case EntityState.Modified:
                         entry.Entity.LastModifiedAt = now;
                         entry.Entity.LastModifiedByUserId = currentUserId;
+                        entry.Entity.LastModifiedByUserName = currentUserName;
 
                         entry.Property(nameof(BaseEntity.CreatedAt)).IsModified = false;
                         entry.Property(nameof(BaseEntity.CreatedByUserId)).IsModified = false;
+                        entry.Property(nameof(BaseEntity.CreatedByUserName)).IsModified = false;
                         break;
                 }
             }
