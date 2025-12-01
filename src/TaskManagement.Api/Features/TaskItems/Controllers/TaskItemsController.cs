@@ -98,10 +98,7 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskItemCommand command)
         {
             _logger.LogInformation("Attempting to update task item with ID: {TaskItemId}", id);
-            if (id != command.Id)
-            {
-                return Problem(statusCode: StatusCodes.Status400BadRequest, detail: "Route ID does not match command ID.");
-            }
+            command.Id = id;
             var updatedTaskDto = await _mediator.Send(command);
             return Ok(updatedTaskDto);
         }

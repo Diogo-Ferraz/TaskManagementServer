@@ -33,15 +33,20 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                 throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            bool canCreateInProject = await _dbContext.Projects
-                .AnyAsync(p => p.Id == request.ProjectId &&
-                              (p.OwnerUserId == currentUserId || p.Members.Any(m => m.UserId == currentUserId)),
-                          cancellationToken);
+            var project = await _dbContext.Projects
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == request.ProjectId, cancellationToken);
 
-            if (!canCreateInProject)
+            if (project is null)
             {
-                var projectExists = await _dbContext.Projects.AnyAsync(p => p.Id == request.ProjectId, cancellationToken);
-                if (!projectExists) throw new NotFoundException($"Project with ID {request.ProjectId} not found.");
+                throw new NotFoundException($"Project with ID {request.ProjectId} not found.");
+            }
+
+            var isAuthorized = project.OwnerUserId == currentUserId
+                               || project.Members.Any(m => m.UserId == currentUserId);
+
+            if (!isAuthorized)
+            {
                 throw new ForbiddenAccessException("User is not authorized to add tasks to this project.");
             }
 

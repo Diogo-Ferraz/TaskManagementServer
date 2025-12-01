@@ -72,10 +72,7 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectCommand command)
         {
             _logger.LogInformation("API: Updating project with ID: {ProjectId}", id);
-            if (id != command.Id)
-            {
-                return Problem(statusCode: StatusCodes.Status400BadRequest, detail: "Route ID does not match command ID.");
-            }
+            command.Id = id;
             var updatedProjectDto = await _mediator.Send(command);
             return Ok(updatedProjectDto);
         }

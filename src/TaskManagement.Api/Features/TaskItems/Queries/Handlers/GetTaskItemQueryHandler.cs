@@ -35,7 +35,7 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
 
             var taskItemDto = await _dbContext.TaskItems
                 .Where(t => t.Id == request.Id)
-                .Where(t => t.Project.OwnerUserId == currentUserId || t.Project.Members.Any(m => m.UserId == currentUserId)) // Auth check
+                .Where(t => t.Project.OwnerUserId == currentUserId || t.Project.Members.Any(m => m.UserId == currentUserId))
                 .ProjectTo<TaskItemDto>(_mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(cancellationToken);
 

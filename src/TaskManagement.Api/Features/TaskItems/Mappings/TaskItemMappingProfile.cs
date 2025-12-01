@@ -9,7 +9,8 @@ namespace TaskManagement.Api.Features.TaskItems.Mappings
     {
         public TaskItemMappingProfile()
         {
-            CreateMap<TaskItem, TaskItemDto>();
+            CreateMap<TaskItem, TaskItemDto>()
+                .ForMember(dest => dest.ProjectName, opt => opt.MapFrom(src => src.Project != null ? src.Project.Name : string.Empty)); //TODO: check if this works
 
             CreateMap<CreateTaskItemCommand, TaskItem>()
                  .ForMember(dest => dest.Id, opt => opt.Ignore())
