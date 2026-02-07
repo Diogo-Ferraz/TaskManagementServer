@@ -8,6 +8,7 @@ using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
+using System.Collections.Immutable;
 using System.Security.Claims;
 using TaskManagement.Auth.Features.Authorization.Attributes;
 using TaskManagement.Auth.Features.Authorization.Extensions;
@@ -87,9 +88,11 @@ namespace TaskManagement.Auth.Presentation.Controllers
             var application = await _applicationManager.FindByClientIdAsync(request.ClientId) ??
                 throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
 
+            var userId = await _userManager.GetUserIdAsync(user);
+            var applicationId = await _applicationManager.GetIdAsync(application);
             var authorizations = await _authorizationManager.FindAsync(
-                subject: await _userManager.GetUserIdAsync(user),
-                client: await _applicationManager.GetIdAsync(application),
+                subject: userId,
+                client: applicationId,
                 status: Statuses.Valid,
                 type: AuthorizationTypes.Permanent,
                 scopes: request.GetScopes()).ToListAsync();
@@ -109,32 +112,12 @@ namespace TaskManagement.Auth.Presentation.Controllers
                 case ConsentTypes.Implicit:
                 case ConsentTypes.External when authorizations.Count is not 0:
                 case ConsentTypes.Explicit when authorizations.Count is not 0 && !request.HasPromptValue(PromptValues.Consent):
-                    var identity = new ClaimsIdentity(
-                        authenticationType: TokenValidationParameters.DefaultAuthenticationType,
-                        nameType: Claims.Name,
-                        roleType: Claims.Role);
-
-                    identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                            .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                            .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                            .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                            .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
-
-                    identity.SetScopes(request.GetScopes());
-                    identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
-
-                    var authorization = authorizations.LastOrDefault();
-                    authorization ??= await _authorizationManager.CreateAsync(
-                        identity: identity,
-                        subject: await _userManager.GetUserIdAsync(user),
-                        client: await _applicationManager.GetIdAsync(application),
-                        type: AuthorizationTypes.Permanent,
-                        scopes: identity.GetScopes());
-
-                    identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
-                    identity.SetDestinations(GetDestinations);
-
-                    return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                    return await SignInUserAsync(
+                        user: user,
+                        userId: userId,
+                        applicationId: applicationId,
+                        scopes: request.GetScopes(),
+                        existingAuthorizations: authorizations);
 
                 case ConsentTypes.Explicit when request.HasPromptValue(PromptValues.None):
                 case ConsentTypes.Systematic when request.HasPromptValue(PromptValues.None):
@@ -169,9 +152,11 @@ namespace TaskManagement.Auth.Presentation.Controllers
             var application = await _applicationManager.FindByClientIdAsync(request.ClientId) ??
                 throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
 
+            var userId = await _userManager.GetUserIdAsync(user);
+            var applicationId = await _applicationManager.GetIdAsync(application);
             var authorizations = await _authorizationManager.FindAsync(
-                subject: await _userManager.GetUserIdAsync(user),
-                client: await _applicationManager.GetIdAsync(application),
+                subject: userId,
+                client: applicationId,
                 status: Statuses.Valid,
                 type: AuthorizationTypes.Permanent,
                 scopes: request.GetScopes()).ToListAsync();
@@ -188,32 +173,12 @@ namespace TaskManagement.Auth.Presentation.Controllers
                     }));
             }
 
-            var identity = new ClaimsIdentity(
-                authenticationType: TokenValidationParameters.DefaultAuthenticationType,
-                nameType: Claims.Name,
-                roleType: Claims.Role);
-
-            identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                    .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                    .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                    .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                    .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
-
-            identity.SetScopes(request.GetScopes());
-            identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
-
-            var authorization = authorizations.LastOrDefault();
-            authorization ??= await _authorizationManager.CreateAsync(
-                identity: identity,
-                subject: await _userManager.GetUserIdAsync(user),
-                client: await _applicationManager.GetIdAsync(application),
-                type: AuthorizationTypes.Permanent,
-                scopes: identity.GetScopes());
-
-            identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
-            identity.SetDestinations(GetDestinations);
-
-            return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+            return await SignInUserAsync(
+                user: user,
+                userId: userId,
+                applicationId: applicationId,
+                scopes: request.GetScopes(),
+                existingAuthorizations: authorizations);
         }
 
         [Authorize, FormValueRequired("submit.Deny")]
@@ -274,11 +239,7 @@ namespace TaskManagement.Auth.Presentation.Controllers
                     nameType: Claims.Name,
                     roleType: Claims.Role);
 
-                identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                        .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                        .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                        .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                        .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
+                await PopulateIdentityClaimsAsync(identity, user);
 
                 identity.SetDestinations(GetDestinations);
 
@@ -289,6 +250,55 @@ namespace TaskManagement.Auth.Presentation.Controllers
             }
 
             throw new InvalidOperationException("The specified grant type is not supported.");
+        }
+
+        private async Task<IActionResult> SignInUserAsync(
+            ApplicationUser user,
+            string userId,
+            string applicationId,
+            ImmutableArray<string> scopes,
+            List<object> existingAuthorizations)
+        {
+            var identity = new ClaimsIdentity(
+                authenticationType: TokenValidationParameters.DefaultAuthenticationType,
+                nameType: Claims.Name,
+                roleType: Claims.Role);
+
+            await PopulateIdentityClaimsAsync(identity, user, userId);
+
+            identity.SetScopes(scopes);
+            identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
+
+            var authorization = existingAuthorizations.LastOrDefault();
+            authorization ??= await _authorizationManager.CreateAsync(
+                identity: identity,
+                subject: userId,
+                client: applicationId,
+                type: AuthorizationTypes.Permanent,
+                scopes: identity.GetScopes());
+
+            identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
+            identity.SetDestinations(GetDestinations);
+
+            return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        }
+
+        private async Task PopulateIdentityClaimsAsync(
+            ClaimsIdentity identity,
+            ApplicationUser user,
+            string? userId = null)
+        {
+            var resolvedUserId = userId ?? await _userManager.GetUserIdAsync(user);
+            var userName = await _userManager.GetUserNameAsync(user);
+            var email = await _userManager.GetEmailAsync(user);
+            var fallbackName = userName ?? email ?? resolvedUserId;
+            var displayName = string.IsNullOrWhiteSpace(user.DisplayName) ? fallbackName : user.DisplayName;
+
+            identity.SetClaim(Claims.Subject, resolvedUserId)
+                    .SetClaim(Claims.Email, email)
+                    .SetClaim(Claims.Name, displayName)
+                    .SetClaim(Claims.PreferredUsername, displayName)
+                    .SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
         }
 
         private static IEnumerable<string> GetDestinations(Claim claim)

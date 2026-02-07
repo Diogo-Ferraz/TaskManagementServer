@@ -68,7 +68,10 @@ namespace TaskManagement.Auth.Features.Identity.Services
                 {
                     UserName = userSetting.Email,
                     Email = userSetting.Email,
-                    EmailConfirmed = true
+                    EmailConfirmed = true,
+                    DisplayName = string.IsNullOrWhiteSpace(userSetting.DisplayName)
+                        ? null
+                        : userSetting.DisplayName.Trim()
                 };
 
                 var result = await userManager.CreateAsync(user, userSetting.Password);
