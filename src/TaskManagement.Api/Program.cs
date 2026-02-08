@@ -43,7 +43,7 @@ try
 
     builder.Services.AddProjectsFeature();
     builder.Services.AddTasksFeature();
-    builder.Services.AddUserFeature();
+    builder.Services.AddUserFeature(builder.Configuration, builder.Environment);
 
     builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
     builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

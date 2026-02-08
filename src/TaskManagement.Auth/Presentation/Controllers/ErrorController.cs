@@ -16,8 +16,8 @@ namespace TaskManagement.Auth.Presentation.Controllers
             {
                 return View(new ErrorViewModel
                 {
-                    Error = response.Error,
-                    ErrorDescription = response.ErrorDescription
+                    Error = response.Error ?? string.Empty,
+                    ErrorDescription = response.ErrorDescription ?? string.Empty
                 });
             }
 

@@ -6,6 +6,7 @@ using TaskManagement.Api.Features.TaskItems.Models;
 using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
 using TaskManagement.Api.Tests.IntegrationTests.Fixtures;
+using TaskManagement.Shared.Models;
 using TaskStatus = TaskManagement.Api.Features.TaskItems.Models.TaskStatus;
 
 namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
@@ -102,7 +103,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         private void SetAuthenticatedUser(string userId)
         {
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserIdHeader);
+            _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
+            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.User);
         }
 
         [Fact]

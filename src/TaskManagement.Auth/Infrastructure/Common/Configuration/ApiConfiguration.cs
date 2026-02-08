@@ -15,7 +15,7 @@ namespace TaskManagement.Auth.Infrastructure.Common.Configuration
         {
             app.UseForwardedHeaders();
 
-            if (environment.IsDevelopment())
+            if (environment.IsDevelopment() || environment.IsEnvironment("Testing"))
             {
                 app.UseDeveloperExceptionPage();
                 app.UseMigrationsEndPoint();

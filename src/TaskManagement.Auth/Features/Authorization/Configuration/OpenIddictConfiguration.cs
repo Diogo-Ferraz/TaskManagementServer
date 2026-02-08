@@ -74,6 +74,11 @@ namespace TaskManagement.Auth.Features.Authorization.Configuration
                 {
                     options.UseLocalServer();
                     options.UseAspNetCore();
+
+                    if (!string.IsNullOrWhiteSpace(openIddictSettings.Audience))
+                    {
+                        options.AddAudiences(openIddictSettings.Audience);
+                    }
                 });
 
             // Register the worker responsible for seeding the database.

@@ -9,7 +9,7 @@
         public DateTime? DueDate { get; set; }
         public Guid ProjectId { get; set; }
         public string ProjectName { get; set; } = string.Empty;
-        public string? AssignedUserId { get; set; } = string.Empty;
+        public string? AssignedUserId { get; set; }
         public string AssignedUserName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public string CreatedByUserId { get; set; } = string.Empty;

@@ -22,7 +22,20 @@ namespace TaskManagement.Auth.Presentation.Controllers
         [HttpGet("~/connect/userinfo"), HttpPost("~/connect/userinfo"), Produces("application/json")]
         public async Task<IActionResult> Userinfo()
         {
-            var user = await _userManager.FindByIdAsync(User.GetClaim(Claims.Subject));
+            var subject = User.GetClaim(Claims.Subject);
+            if (string.IsNullOrWhiteSpace(subject))
+            {
+                return Challenge(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidToken,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                            "The specified access token is missing the subject claim."
+                    }));
+            }
+
+            var user = await _userManager.FindByIdAsync(subject);
             if (user is null)
             {
                 return Challenge(
@@ -43,13 +56,23 @@ namespace TaskManagement.Auth.Presentation.Controllers
 
             if (User.HasScope(Scopes.Email))
             {
-                claims[Claims.Email] = await _userManager.GetEmailAsync(user);
+                var email = await _userManager.GetEmailAsync(user);
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    claims[Claims.Email] = email;
+                }
+
                 claims[Claims.EmailVerified] = await _userManager.IsEmailConfirmedAsync(user);
             }
 
             if (User.HasScope(Scopes.Phone))
             {
-                claims[Claims.PhoneNumber] = await _userManager.GetPhoneNumberAsync(user);
+                var phone = await _userManager.GetPhoneNumberAsync(user);
+                if (!string.IsNullOrWhiteSpace(phone))
+                {
+                    claims[Claims.PhoneNumber] = phone;
+                }
+
                 claims[Claims.PhoneNumberVerified] = await _userManager.IsPhoneNumberConfirmedAsync(user);
             }
 

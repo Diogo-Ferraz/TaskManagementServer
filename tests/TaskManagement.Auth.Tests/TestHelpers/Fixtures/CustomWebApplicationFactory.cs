@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenIddict.EntityFrameworkCore.Models;
@@ -22,6 +23,25 @@ namespace TaskManagement.Auth.Tests.TestHelpers.Fixtures
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            var contentRoot = ResolveAuthContentRoot(AppContext.BaseDirectory);
+            builder.UseContentRoot(contentRoot);
+            builder.UseEnvironment("Testing");
+
+            builder.ConfigureAppConfiguration((context, config) =>
+            {
+                config.SetBasePath(contentRoot);
+                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+                config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: false);
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:TaskManagementDbConnection"] =
+                        "Server=(localdb)\\mssqllocaldb;Database=TaskManagementDb_Test;Trusted_Connection=True;MultipleActiveResultSets=true",
+                    ["OpenIddict:Issuer"] = "https://localhost/",
+                    ["OpenIddict:EncryptionKey"] = "DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=",
+                    ["OpenIddict:Audience"] = ""
+                });
+            });
+
             builder.ConfigureServices(services =>
             {
                 var descriptor = services.SingleOrDefault(
@@ -38,6 +58,26 @@ namespace TaskManagement.Auth.Tests.TestHelpers.Fixtures
                     options.UseOpenIddict();
                 });
             });
+        }
+
+        private static string ResolveAuthContentRoot(string baseDirectory)
+        {
+            var current = new DirectoryInfo(baseDirectory);
+
+            while (current != null)
+            {
+                var candidate = Path.Combine(current.FullName, "src", "TaskManagement.Auth");
+                var projectFile = Path.Combine(candidate, "TaskManagement.Auth.csproj");
+
+                if (File.Exists(projectFile))
+                {
+                    return candidate;
+                }
+
+                current = current.Parent;
+            }
+
+            throw new DirectoryNotFoundException("Unable to locate TaskManagement.Auth content root.");
         }
 
         public async Task InitializeAsync()
@@ -62,6 +102,11 @@ namespace TaskManagement.Auth.Tests.TestHelpers.Fixtures
 
         public async Task DisposeAsync()
         {
+            if (_scopeFactory == null)
+            {
+                return;
+            }
+
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             await db.Database.EnsureDeletedAsync();

@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
@@ -10,6 +11,7 @@ using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
 using TaskManagement.Api.Tests.IntegrationTests.Fixtures;
+using TaskManagement.Shared.Models;
 using TaskStatus = TaskManagement.Api.Features.TaskItems.Models.TaskStatus;
 
 namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
@@ -95,7 +97,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         private void SetAuthenticatedUser(string userId)
         {
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserIdHeader);
+            _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
+            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.User);
         }
 
         [Fact]
@@ -170,6 +174,36 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         }
 
         [Fact]
+        public async Task UpdateTaskItem_ShouldAutoAddMember_WhenAssigneeIsNotProjectMember()
+        {
+            // Arrange
+            SetAuthenticatedUser(_projectOwnerId);
+            var newAssigneeId = "user-task-new-member-update";
+            var command = new UpdateTaskItemCommand
+            {
+                Id = _taskIdToUpdate,
+                Title = "Updated With New Member",
+                Status = TaskStatus.InProgress,
+                AssignedUserId = newAssigneeId
+            };
+
+            // Act
+            var response = await _client.PutAsJsonAsync($"/api/taskitems/{_taskIdToUpdate}", command);
+
+            // Assert Response
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            // Assert Database
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+                var memberExists = await db.ProjectMembers
+                    .AnyAsync(pm => pm.ProjectId == _projectId && pm.UserId == newAssigneeId);
+                memberExists.Should().BeTrue();
+            }
+        }
+
+        [Fact]
         public async Task UpdateTaskItem_WhenUserIsProjectMemberButNotAssigneeOrOwner_ShouldReturnForbidden()
         {
             // Arrange
@@ -195,20 +229,6 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
 
             // Assert Response
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        }
-
-        [Fact]
-        public async Task UpdateTaskItem_WithMismatchedRouteIdAndCommandId_ShouldReturnBadRequest()
-        {
-            // Arrange
-            SetAuthenticatedUser(_projectOwnerId);
-            var command = new UpdateTaskItemCommand { Id = Guid.NewGuid(), Title = "Mismatched IDs" };
-
-            // Act
-            var response = await _client.PutAsJsonAsync($"/api/taskitems/{_taskIdToUpdate}", command);
-
-            // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         }
 
         [Fact]

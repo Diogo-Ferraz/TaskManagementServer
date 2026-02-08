@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
@@ -9,6 +10,7 @@ using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
 using TaskManagement.Api.Tests.IntegrationTests.Fixtures;
+using TaskManagement.Shared.Models;
 using TaskStatus = TaskManagement.Api.Features.TaskItems.Models.TaskStatus;
 
 namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
@@ -58,7 +60,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         private void SetAuthenticatedUser(string userId)
         {
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserIdHeader);
+            _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
+            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.User);
         }
 
         [Fact]
@@ -121,6 +125,36 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             createdDto!.Title.Should().Be(command.Title);
             createdDto.ProjectId.Should().Be(_project1Id);
             createdDto.CreatedByUserId.Should().Be(_projectMemberId);
+        }
+
+        [Fact]
+        public async Task CreateTaskItem_ShouldAutoAddMember_WhenAssigneeIsNotProjectMember()
+        {
+            // Arrange
+            SetAuthenticatedUser(_projectOwnerId);
+            var newAssigneeId = "user-task-new-member-create";
+            var command = new CreateTaskItemCommand
+            {
+                ProjectId = _project1Id,
+                Title = "Task With New Member",
+                Status = TaskStatus.Todo,
+                AssignedUserId = newAssigneeId
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/taskitems", command);
+
+            // Assert Response
+            response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+            // Assert Database
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+                var memberExists = await db.ProjectMembers
+                    .AnyAsync(pm => pm.ProjectId == _project1Id && pm.UserId == newAssigneeId);
+                memberExists.Should().BeTrue();
+            }
         }
 
         [Fact]
