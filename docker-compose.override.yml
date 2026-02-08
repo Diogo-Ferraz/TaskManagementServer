@@ -1,6 +1,13 @@
 version: '3.8'
 
 services:
+  sqlserver:
+    environment:
+      - SQL_PASSWORD=${SQL_PASSWORD:-Passw0rd!1234}
+      - MSSQL_SA_PASSWORD=${SQL_PASSWORD:-Passw0rd!1234}
+    ports:
+      - "1433:1433"
+
   auth-service:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
@@ -53,3 +60,6 @@ services:
       - ClientSettings__Clients__0__Scopes__email=Access your email address
       - ClientSettings__Clients__0__Scopes__roles=Access your role information
       - ClientSettings__Clients__0__AllowedCorsOrigins__0=https://api.localhost
+  caddy:
+    volumes:
+      - ./Caddyfile.dev:/etc/caddy/Caddyfile
