@@ -14,10 +14,10 @@ using TaskManagement.Auth.Features.Authorization.Attributes;
 using TaskManagement.Auth.Features.Authorization.Extensions;
 using TaskManagement.Auth.Features.Identity.Models;
 using TaskManagement.Auth.Infrastructure.Common.Settings;
-using TaskManagement.Auth.Presentation.Models.Authorize;
+using TaskManagement.Auth.Features.Authorization.Models;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
-namespace TaskManagement.Auth.Presentation.Controllers
+namespace TaskManagement.Auth.Features.Authorization
 {
     public class AuthorizationController : Controller
     {

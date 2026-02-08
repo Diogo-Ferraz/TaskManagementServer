@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
 using TaskManagement.Auth.Features.Identity.Models;
-using TaskManagement.Auth.Presentation.Models.Users;
+using TaskManagement.Auth.Features.Users.Models;
 
-namespace TaskManagement.Auth.Presentation.Controllers
+namespace TaskManagement.Auth.Features.Users
 {
     [ApiController]
     [Route("api/users")]

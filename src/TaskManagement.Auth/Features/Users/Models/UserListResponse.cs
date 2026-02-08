@@ -1,4 +1,4 @@
-﻿namespace TaskManagement.Auth.Presentation.Models.Users
+﻿namespace TaskManagement.Auth.Features.Users.Models
 {
     public class UserListResponse
     {

@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Web;
-using TaskManagement.Auth.Presentation.Models.Users;
+using TaskManagement.Auth.Features.Users.Models;
 using TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Configuration;
 using TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Helpers;
 using TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Models;

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace TaskManagement.Auth.Presentation.Models.Authorize
+namespace TaskManagement.Auth.Features.Authorization.Models
 {
     public class AuthorizeViewModel
     {
