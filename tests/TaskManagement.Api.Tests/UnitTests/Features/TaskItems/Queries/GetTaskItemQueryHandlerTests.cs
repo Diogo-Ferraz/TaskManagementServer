@@ -54,7 +54,16 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
                 Id = _projectId,
                 Name = "Project With Tasks",
                 OwnerUserId = _projectOwnerId,
-                Members = new List<ProjectMember> { new ProjectMember { UserId = _projectMemberId, ProjectId = _projectId } },
+                Members = new List<ProjectMember>
+                {
+                    new ProjectMember
+                    {
+                        UserId = _projectMemberId,
+                        ProjectId = _projectId,
+                        JoinedAt = DateTime.UtcNow,
+                        AddedByUserId = _projectOwnerId
+                    }
+                },
                 CreatedAt = DateTime.UtcNow,
                 CreatedByUserId = _projectOwnerId,
                 LastModifiedAt = DateTime.UtcNow,

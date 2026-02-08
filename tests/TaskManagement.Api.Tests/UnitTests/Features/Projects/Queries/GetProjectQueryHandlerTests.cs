@@ -63,7 +63,13 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Queries
                 LastModifiedAt = DateTime.UtcNow,
                 LastModifiedByUserId = _ownerUserId
             };
-            var member = new ProjectMember { ProjectId = _projectExistsId, UserId = _memberUserId };
+            var member = new ProjectMember
+            {
+                ProjectId = _projectExistsId,
+                UserId = _memberUserId,
+                JoinedAt = DateTime.UtcNow,
+                AddedByUserId = _ownerUserId
+            };
 
             _dbContext.Projects.Add(project);
             _dbContext.ProjectMembers.Add(member);

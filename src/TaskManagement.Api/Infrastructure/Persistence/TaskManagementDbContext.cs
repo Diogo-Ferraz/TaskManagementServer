@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using TaskManagement.Api.Features.Activity.Models;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.TaskItems.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
@@ -22,6 +23,7 @@ namespace TaskManagement.Api.Infrastructure.Persistence
         public DbSet<Project> Projects { get; set; } = null!;
         public DbSet<TaskItem> TaskItems { get; set; } = null!;
         public DbSet<ProjectMember> ProjectMembers { get; set; } = null!;
+        public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -49,11 +51,24 @@ namespace TaskManagement.Api.Infrastructure.Persistence
             builder.Entity<ProjectMember>(entity =>
             {
                 entity.HasKey(pm => new { pm.ProjectId, pm.UserId });
+                entity.Property(pm => pm.AddedByUserId).IsRequired();
 
                 entity.HasOne(pm => pm.Project)
                       .WithMany(p => p.Members)
                       .HasForeignKey(pm => pm.ProjectId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<ActivityLog>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ProjectName).HasMaxLength(200);
+                entity.Property(e => e.TaskTitle).HasMaxLength(200);
+                entity.Property(e => e.CreatedByUserId).IsRequired();
+                entity.Property(e => e.CreatedByUserName).HasMaxLength(200);
+
+                entity.HasIndex(e => e.ProjectId);
+                entity.HasIndex(e => e.CreatedAt);
             });
         }
 

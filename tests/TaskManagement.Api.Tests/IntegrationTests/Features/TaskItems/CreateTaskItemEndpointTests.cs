@@ -18,7 +18,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
     public class CreateTaskItemEndpointTests : IClassFixture<ApiWebApplicationFactory<Program>>, IAsyncLifetime
     {
         private readonly ApiWebApplicationFactory<Program> _factory;
-        private HttpClient _client;
+        private HttpClient _client = null!;
 
         private readonly string _projectOwnerId = "user-task-owner-create";
         private readonly string _projectMemberId = "user-task-member-create";
@@ -37,7 +37,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             _client = _factory.CreateClient();
             await _factory.ResetDatabaseAsync();
 
-            await _factory.SeedDatabaseAsync(async db =>
+            await _factory.SeedDatabaseAsync(db =>
             {
                 var project1 = new Project
                 {
@@ -49,9 +49,16 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     LastModifiedAt = DateTime.UtcNow,
                     LastModifiedByUserId = _projectOwnerId
                 };
-                project1.Members.Add(new ProjectMember { ProjectId = _project1Id, UserId = _projectMemberId });
+                project1.Members.Add(new ProjectMember
+                {
+                    ProjectId = _project1Id,
+                    UserId = _projectMemberId,
+                    JoinedAt = DateTime.UtcNow,
+                    AddedByUserId = _projectOwnerId
+                });
 
                 db.Projects.Add(project1);
+                return Task.CompletedTask;
             });
         }
 

@@ -14,7 +14,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
     public class GetTaskItemEndpointTests : IClassFixture<ApiWebApplicationFactory<Program>>, IAsyncLifetime
     {
         private readonly ApiWebApplicationFactory<Program> _factory;
-        private HttpClient _client;
+        private HttpClient _client = null!;
 
         private readonly string _projectOwnerId = "user-gettask-owner-1";
         private readonly string _project2OwnerId = "user-gettask-owner-2";
@@ -39,7 +39,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             _client = _factory.CreateClient();
             await _factory.ResetDatabaseAsync();
 
-            await _factory.SeedDatabaseAsync(async db =>
+            await _factory.SeedDatabaseAsync(db =>
             {
                 var project1 = new Project
                 {
@@ -51,8 +51,20 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     LastModifiedAt = DateTime.UtcNow,
                     LastModifiedByUserId = _projectOwnerId
                 };
-                project1.Members.Add(new ProjectMember { ProjectId = _project1Id, UserId = _projectMemberId });
-                project1.Members.Add(new ProjectMember { ProjectId = _project1Id, UserId = _taskAssigneeInProject1Id }); // Ensure assignee is also a member
+                project1.Members.Add(new ProjectMember
+                {
+                    ProjectId = _project1Id,
+                    UserId = _projectMemberId,
+                    JoinedAt = DateTime.UtcNow,
+                    AddedByUserId = _projectOwnerId
+                });
+                project1.Members.Add(new ProjectMember
+                {
+                    ProjectId = _project1Id,
+                    UserId = _taskAssigneeInProject1Id,
+                    JoinedAt = DateTime.UtcNow,
+                    AddedByUserId = _projectOwnerId
+                }); // Ensure assignee is also a member
 
                 var project2 = new Project
                 {
@@ -95,6 +107,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
 
                 db.Projects.AddRange(project1, project2);
                 db.TaskItems.AddRange(task1, task2);
+                return Task.CompletedTask;
             });
         }
 

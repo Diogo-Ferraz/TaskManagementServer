@@ -52,8 +52,23 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Queries
             var projects = new List<Project>
             {
                 new Project { Id = _ownedProjectId, Name = "A Owned Project", OwnerUserId = _testUserId, CreatedAt = DateTime.UtcNow },
-                new Project { Id = _memberProjectId, Name = "B Member Project", OwnerUserId = "other-owner", CreatedAt = DateTime.UtcNow.AddMinutes(1),
-                              Members = new List<ProjectMember> { new ProjectMember { UserId = _testUserId, ProjectId = _memberProjectId } } },
+                new Project
+                {
+                    Id = _memberProjectId,
+                    Name = "B Member Project",
+                    OwnerUserId = "other-owner",
+                    CreatedAt = DateTime.UtcNow.AddMinutes(1),
+                    Members = new List<ProjectMember>
+                    {
+                        new ProjectMember
+                        {
+                            UserId = _testUserId,
+                            ProjectId = _memberProjectId,
+                            JoinedAt = DateTime.UtcNow,
+                            AddedByUserId = "other-owner"
+                        }
+                    }
+                },
                 new Project { Id = _otherProjectId, Name = "C Other Project", OwnerUserId = "other-owner", CreatedAt = DateTime.UtcNow.AddMinutes(2) }
             };
             _dbContext.Projects.AddRange(projects);

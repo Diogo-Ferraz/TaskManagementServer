@@ -51,7 +51,26 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
 
         private void SeedDatabase()
         {
-            var project1 = new Project { Id = _projectIdWithTasks, Name = "Project With Tasks", OwnerUserId = _projectOwnerId, Members = new List<ProjectMember> { new ProjectMember { UserId = _projectMemberId, ProjectId = _projectIdWithTasks } }, CreatedAt = DateTime.UtcNow, CreatedByUserId = _projectOwnerId, LastModifiedAt = DateTime.UtcNow, LastModifiedByUserId = _projectOwnerId };
+            var project1 = new Project
+            {
+                Id = _projectIdWithTasks,
+                Name = "Project With Tasks",
+                OwnerUserId = _projectOwnerId,
+                Members = new List<ProjectMember>
+                {
+                    new ProjectMember
+                    {
+                        UserId = _projectMemberId,
+                        ProjectId = _projectIdWithTasks,
+                        JoinedAt = DateTime.UtcNow,
+                        AddedByUserId = _projectOwnerId
+                    }
+                },
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = _projectOwnerId,
+                LastModifiedAt = DateTime.UtcNow,
+                LastModifiedByUserId = _projectOwnerId
+            };
             var project2 = new Project { Id = _projectWithoutAccess, Name = "Project Without Access", OwnerUserId = "another-owner", CreatedAt = DateTime.UtcNow, CreatedByUserId = "another-owner", LastModifiedAt = DateTime.UtcNow, LastModifiedByUserId = "another-owner" };
 
             var tasks = new List<TaskItem>

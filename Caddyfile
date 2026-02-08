@@ -1,11 +1,2 @@
-# Caddyfile
-
-auth.localhost {
-  reverse_proxy auth-service:8080
-  tls internal
-}
-
-api.localhost {
-  reverse_proxy api-service:8080
-  tls internal
-}
+# Caddyfile (base)
+# Development-only TLS and localhost hostnames should be defined in an override file.

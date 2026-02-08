@@ -15,7 +15,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
     public class UpdateProjectEndpointTests : IClassFixture<ApiWebApplicationFactory<Program>>, IAsyncLifetime
     {
         private readonly ApiWebApplicationFactory<Program> _factory;
-        private HttpClient _client;
+        private HttpClient _client = null!;
 
         // Test Data
         private readonly Guid _projectToUpdateId = Guid.NewGuid();
@@ -38,7 +38,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
             _client = _factory.CreateClient();
             await _factory.ResetDatabaseAsync();
 
-            await _factory.SeedDatabaseAsync(async db =>
+            await _factory.SeedDatabaseAsync(db =>
             {
                 var project1 = new Project
                 {
@@ -63,6 +63,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
                     LastModifiedByUserId = _otherUserId
                 };
                 db.Projects.AddRange(project1, project2);
+                return Task.CompletedTask;
             });
         }
 

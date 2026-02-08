@@ -39,7 +39,7 @@ namespace TaskManagement.Api.Infrastructure.ExceptionHandling
             string title;
             string detail;
             string type;
-            IDictionary<string, string[]> errors = null;
+            IDictionary<string, string[]>? errors = null;
 
             switch (exception)
             {

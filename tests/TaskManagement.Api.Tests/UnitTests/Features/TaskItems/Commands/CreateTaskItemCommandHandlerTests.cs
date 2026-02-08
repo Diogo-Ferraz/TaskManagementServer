@@ -2,6 +2,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using TaskManagement.Api.Features.Activity.Services.Interfaces;
+using TaskManagement.Api.Features.Activity.Models;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.TaskItems.Commands;
 using TaskManagement.Api.Features.TaskItems.Commands.Handlers;
@@ -20,6 +22,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
         private readonly IMapper _mapper;
         private readonly Mock<ICurrentUserService> _mockCurrentUser;
         private readonly Mock<IUserDirectoryService> _mockUserDirectory;
+        private readonly Mock<IActivityPublisher> _mockActivityPublisher;
         private readonly CreateTaskItemCommandHandler _handler;
 
         private readonly string _projectOwnerId = "project-owner-123";
@@ -35,6 +38,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 .Options;
             _mockCurrentUser = new Mock<ICurrentUserService>();
             _mockUserDirectory = new Mock<IUserDirectoryService>();
+            _mockActivityPublisher = new Mock<IActivityPublisher>();
             _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
 
             var mappingConfig = new MapperConfiguration(cfg =>
@@ -49,8 +53,13 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 .Setup(s => s.UserExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
+            _mockActivityPublisher
+                .Setup(p => p.PublishAsync(It.IsAny<ActivityLog>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
             _handler = new CreateTaskItemCommandHandler(
                 _dbContext,
+                _mockActivityPublisher.Object,
                 _mockCurrentUser.Object,
                 _mapper,
                 _mockUserDirectory.Object);
@@ -63,7 +72,16 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 Id = _existingProjectId,
                 Name = "Test Project",
                 OwnerUserId = _projectOwnerId,
-                Members = new List<ProjectMember> { new ProjectMember { UserId = _projectMemberId, ProjectId = _existingProjectId } },
+                Members = new List<ProjectMember>
+                {
+                    new ProjectMember
+                    {
+                        UserId = _projectMemberId,
+                        ProjectId = _existingProjectId,
+                        JoinedAt = DateTime.UtcNow,
+                        AddedByUserId = _projectOwnerId
+                    }
+                },
                 CreatedAt = DateTime.UtcNow,
                 CreatedByUserId = _projectOwnerId,
                 LastModifiedAt = DateTime.UtcNow,

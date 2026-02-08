@@ -2,6 +2,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using TaskManagement.Api.Features.Activity.Services.Interfaces;
+using TaskManagement.Api.Features.Activity.Models;
 using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Commands.Handlers;
 using TaskManagement.Api.Features.Projects.Mappings;
@@ -15,6 +17,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
         private readonly TaskManagementDbContext _dbContext;
         private readonly IMapper _mapper;
         private readonly Mock<ICurrentUserService> _mockCurrentUser;
+        private readonly Mock<IActivityPublisher> _mockActivityPublisher;
         private readonly CreateProjectCommandHandler _handler;
 
         private readonly string _testUserId = "user-creator-123";
@@ -26,12 +29,21 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
                 .Options;
 
             _mockCurrentUser = new Mock<ICurrentUserService>();
+            _mockActivityPublisher = new Mock<IActivityPublisher>();
             _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
 
             var mappingConfig = new MapperConfiguration(cfg => cfg.AddProfile<ProjectMappingProfile>());
             _mapper = mappingConfig.CreateMapper();
 
-            _handler = new CreateProjectCommandHandler(_dbContext, _mockCurrentUser.Object, _mapper);
+            _mockActivityPublisher
+                .Setup(p => p.PublishAsync(It.IsAny<ActivityLog>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            _handler = new CreateProjectCommandHandler(
+                _dbContext,
+                _mockActivityPublisher.Object,
+                _mockCurrentUser.Object,
+                _mapper);
         }
 
         [Fact]

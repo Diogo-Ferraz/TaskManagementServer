@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
 using MediatR;
+using TaskManagement.Api.Features.Activity.Models;
+using TaskManagement.Api.Features.Activity.Services.Interfaces;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
@@ -11,15 +13,18 @@ namespace TaskManagement.Api.Features.Projects.Commands.Handlers
     public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand, ProjectDto>
     {
         private readonly TaskManagementDbContext _dbContext;
+        private readonly IActivityPublisher _activityPublisher;
         private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
 
         public CreateProjectCommandHandler(
             TaskManagementDbContext dbContext,
+            IActivityPublisher activityPublisher,
             ICurrentUserService currentUserService,
             IMapper mapper)
         {
             _dbContext = dbContext;
+            _activityPublisher = activityPublisher;
             _currentUserService = currentUserService;
             _mapper = mapper;
         }
@@ -36,9 +41,24 @@ namespace TaskManagement.Api.Features.Projects.Commands.Handlers
             project.OwnerUserId = currentUserId;
 
             _dbContext.Projects.Add(project);
-            _dbContext.ProjectMembers.Add(new ProjectMember { Project = project, UserId = currentUserId });
+            _dbContext.ProjectMembers.Add(new ProjectMember
+            {
+                Project = project,
+                UserId = currentUserId,
+                JoinedAt = DateTime.UtcNow,
+                AddedByUserId = currentUserId
+            });
+
+            var activityLog = new ActivityLog
+            {
+                Type = ActivityType.ProjectCreated,
+                ProjectId = project.Id,
+                ProjectName = project.Name
+            };
+            _dbContext.ActivityLogs.Add(activityLog);
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+            await _activityPublisher.PublishAsync(activityLog, cancellationToken);
 
             return _mapper.Map<ProjectDto>(project);
         }
