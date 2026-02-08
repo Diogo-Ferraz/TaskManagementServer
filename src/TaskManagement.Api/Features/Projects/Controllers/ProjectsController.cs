@@ -122,6 +122,28 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         }
 
         /// <summary>
+        /// Retrieves members of a project by project ID.
+        /// </summary>
+        /// <param name="id">The ID of the project.</param>
+        /// <returns>The list of project members.</returns>
+        /// <response code="200">Members retrieved successfully.</response>
+        /// <response code="401">Unauthorized.</response>
+        /// <response code="403">Forbidden.</response>
+        /// <response code="404">Project not found.</response>
+        [HttpGet("{id:guid}/members")]
+        [Authorize(Policy = Policies.CanViewOwnProjects)]
+        [ProducesResponseType(typeof(IReadOnlyList<ProjectMemberDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetMembers(Guid id)
+        {
+            _logger.LogInformation("API: Retrieving members for project with ID: {ProjectId}", id);
+            var members = await _mediator.Send(new GetProjectMembersQuery { ProjectId = id });
+            return Ok(members);
+        }
+
+        /// <summary>
         /// Retrieves the list of projects for the current user.
         /// </summary>
         /// <returns>List of projects owned by the current user.</returns>

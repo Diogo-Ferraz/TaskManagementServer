@@ -17,9 +17,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Fixtures
     where TEntryPoint : class
     {
         private readonly string _databaseName;
-        private IServiceScopeFactory _scopeFactory;
+        private IServiceScopeFactory _scopeFactory = null!;
 
-        public Action<IServiceCollection> ConfigureTestServices { get; set; }
+        public Action<IServiceCollection>? ConfigureTestServices { get; set; }
 
         public ApiWebApplicationFactory()
         {
@@ -81,7 +81,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Fixtures
             await db.Database.EnsureCreatedAsync();
         }
 
-        public async Task DisposeAsync()
+        public new async Task DisposeAsync()
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();

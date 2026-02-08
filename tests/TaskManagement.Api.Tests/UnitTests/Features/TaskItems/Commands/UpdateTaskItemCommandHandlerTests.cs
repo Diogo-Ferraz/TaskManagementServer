@@ -2,6 +2,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using TaskManagement.Api.Features.Activity.Services.Interfaces;
+using TaskManagement.Api.Features.Activity.Models;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.TaskItems.Commands;
 using TaskManagement.Api.Features.TaskItems.Commands.Handlers;
@@ -10,6 +12,7 @@ using TaskManagement.Api.Features.TaskItems.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
+using TaskManagement.Api.Infrastructure.Persistence.Models;
 using TaskStatus = TaskManagement.Api.Features.TaskItems.Models.TaskStatus;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
@@ -20,6 +23,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
         private readonly IMapper _mapper;
         private readonly Mock<ICurrentUserService> _mockCurrentUser;
         private readonly Mock<IUserDirectoryService> _mockUserDirectory;
+        private readonly Mock<IActivityPublisher> _mockActivityPublisher;
         private readonly UpdateTaskItemCommandHandler _handler;
 
         private readonly Guid _taskIdToUpdate = Guid.NewGuid();
@@ -36,6 +40,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 .Options;
             _mockCurrentUser = new Mock<ICurrentUserService>();
             _mockUserDirectory = new Mock<IUserDirectoryService>();
+            _mockActivityPublisher = new Mock<IActivityPublisher>();
             _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
 
             var mappingConfig = new MapperConfiguration(cfg => cfg.AddProfile<TaskItemMappingProfile>());
@@ -47,8 +52,13 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 .Setup(s => s.UserExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
+            _mockActivityPublisher
+                .Setup(p => p.PublishAsync(It.IsAny<ActivityLog>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
             _handler = new UpdateTaskItemCommandHandler(
                 _dbContext,
+                _mockActivityPublisher.Object,
                 _mockCurrentUser.Object,
                 _mapper,
                 _mockUserDirectory.Object);
@@ -56,7 +66,26 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
 
         private TaskItem SeedDatabase()
         {
-            var project = new Project { Id = _projectId, Name = "Project For Tasks", OwnerUserId = _projectOwnerId, CreatedAt = DateTime.UtcNow, CreatedByUserId = _projectOwnerId, LastModifiedAt = DateTime.UtcNow, LastModifiedByUserId = _projectOwnerId };
+            var project = new Project
+            {
+                Id = _projectId,
+                Name = "Project For Tasks",
+                OwnerUserId = _projectOwnerId,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = _projectOwnerId,
+                LastModifiedAt = DateTime.UtcNow,
+                LastModifiedByUserId = _projectOwnerId,
+                Members = new List<ProjectMember>
+                {
+                    new ProjectMember
+                    {
+                        ProjectId = _projectId,
+                        UserId = _taskAssigneeId,
+                        JoinedAt = DateTime.UtcNow,
+                        AddedByUserId = _projectOwnerId
+                    }
+                }
+            };
             var task = new TaskItem
             {
                 Id = _taskIdToUpdate,

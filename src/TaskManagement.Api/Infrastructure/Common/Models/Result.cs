@@ -6,7 +6,7 @@
         public T? Value { get; }
         public string Error { get; }
 
-        private Result(bool isSuccess, T value, string error)
+        private Result(bool isSuccess, T? value, string error)
         {
             IsSuccess = isSuccess;
             Value = value;

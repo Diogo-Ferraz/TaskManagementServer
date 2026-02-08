@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
+using TaskManagement.Api.Features.Activity.Configuration;
 using TaskManagement.Api.Features.Projects.Configuration;
 using TaskManagement.Api.Features.TaskItems.Configuration;
 using TaskManagement.Api.Features.Users.Configuration;
@@ -43,6 +44,7 @@ try
 
     builder.Services.AddProjectsFeature();
     builder.Services.AddTasksFeature();
+    builder.Services.AddActivityFeature();
     builder.Services.AddUserFeature(builder.Configuration, builder.Environment);
 
     builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);

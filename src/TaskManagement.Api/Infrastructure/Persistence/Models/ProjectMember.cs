@@ -6,6 +6,8 @@ namespace TaskManagement.Api.Infrastructure.Persistence.Models
     {
         public Guid ProjectId { get; set; }
         public required string UserId { get; set; }
+        public DateTime JoinedAt { get; set; }
+        public string AddedByUserId { get; set; } = string.Empty;
         public Project Project { get; set; } = null!;
     }
 }

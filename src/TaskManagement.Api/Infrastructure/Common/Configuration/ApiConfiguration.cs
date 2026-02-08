@@ -1,4 +1,5 @@
 ﻿using Serilog;
+using TaskManagement.Api.Features.Activity.Hubs;
 using TaskManagement.Api.Infrastructure.Common.Settings;
 using TaskManagement.Api.Infrastructure.ExceptionHandling;
 
@@ -49,9 +50,21 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
             app.UseExceptionHandler();
             app.UseStatusCodePages();
             app.UseCors();
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Path.StartsWithSegments("/hubs/activity")
+                    && string.IsNullOrWhiteSpace(context.Request.Headers.Authorization)
+                    && context.Request.Query.TryGetValue("access_token", out var accessToken))
+                {
+                    context.Request.Headers.Authorization = $"Bearer {accessToken}";
+                }
+
+                await next();
+            });
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
+            app.MapHub<ActivityHub>("/hubs/activity");
 
             return app;
         }
