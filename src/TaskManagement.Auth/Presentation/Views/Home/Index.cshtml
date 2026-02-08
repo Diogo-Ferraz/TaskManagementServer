@@ -1,13 +1,17 @@
 ﻿@using Microsoft.AspNetCore.Authentication
 
-@if (User.Identity.IsAuthenticated)
+@if (User.Identity?.IsAuthenticated == true)
 {
     var authenticationResult = await Context.AuthenticateAsync();
-    var issued = authenticationResult.Properties.Items[".issued"];
-    var expires = authenticationResult.Properties.Items[".expires"];
+    var issued = authenticationResult?.Properties?.Items.TryGetValue(".issued", out var issuedValue) == true
+        ? issuedValue
+        : string.Empty;
+    var expires = authenticationResult?.Properties?.Items.TryGetValue(".expires", out var expiresValue) == true
+        ? expiresValue
+        : string.Empty;
     <div>
         <p>You are signed in as</p>
-        <h2>@User.Identity.Name</h2>
+        <h2>@(User.Identity?.Name ?? string.Empty)</h2>
         <hr />
         <dl>
             <dt>Issued</dt>
@@ -20,7 +24,7 @@
     </div>
 }
 
-@if (!User.Identity.IsAuthenticated)
+@if (User.Identity?.IsAuthenticated != true)
 {
     <div>
         <p>You are not signed in</p>

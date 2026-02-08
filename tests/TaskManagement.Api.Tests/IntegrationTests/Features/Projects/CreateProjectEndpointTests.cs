@@ -8,6 +8,7 @@ using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Tests.IntegrationTests.Fixtures;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
 {
@@ -27,6 +28,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
 
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, TestUserId);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserNameHeader, TestUserName);
+            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.ProjectManager);
         }
 
         public async Task InitializeAsync()

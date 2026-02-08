@@ -5,6 +5,7 @@ using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
 using TaskManagement.Api.Tests.IntegrationTests.Fixtures;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
 {
@@ -78,7 +79,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
         private void SetAuthenticatedUser(string userId)
         {
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserIdHeader);
+            _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
+            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.ProjectManager);
         }
 
         [Fact]

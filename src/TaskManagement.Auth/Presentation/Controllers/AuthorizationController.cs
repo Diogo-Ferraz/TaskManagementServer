@@ -85,11 +85,17 @@ namespace TaskManagement.Auth.Presentation.Controllers
             var user = await _userManager.GetUserAsync(result.Principal) ??
                 throw new InvalidOperationException("The user details cannot be retrieved.");
 
+            if (string.IsNullOrWhiteSpace(request.ClientId))
+            {
+                throw new InvalidOperationException("The client identifier cannot be retrieved.");
+            }
+
             var application = await _applicationManager.FindByClientIdAsync(request.ClientId) ??
                 throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
 
             var userId = await _userManager.GetUserIdAsync(user);
-            var applicationId = await _applicationManager.GetIdAsync(application);
+            var applicationId = await _applicationManager.GetIdAsync(application) ??
+                throw new InvalidOperationException("The client application identifier cannot be retrieved.");
             var authorizations = await _authorizationManager.FindAsync(
                 subject: userId,
                 client: applicationId,
@@ -133,8 +139,8 @@ namespace TaskManagement.Auth.Presentation.Controllers
                 default:
                     return View(new AuthorizeViewModel
                     {
-                        ApplicationName = await _applicationManager.GetLocalizedDisplayNameAsync(application),
-                        Scope = request.Scope
+                        ApplicationName = await _applicationManager.GetLocalizedDisplayNameAsync(application) ?? string.Empty,
+                        Scope = request.Scope ?? string.Empty
                     });
             }
         }
@@ -149,11 +155,17 @@ namespace TaskManagement.Auth.Presentation.Controllers
             var user = await _userManager.GetUserAsync(User) ??
                 throw new InvalidOperationException("The user details cannot be retrieved.");
 
+            if (string.IsNullOrWhiteSpace(request.ClientId))
+            {
+                throw new InvalidOperationException("The client identifier cannot be retrieved.");
+            }
+
             var application = await _applicationManager.FindByClientIdAsync(request.ClientId) ??
                 throw new InvalidOperationException("Details concerning the calling client application cannot be found.");
 
             var userId = await _userManager.GetUserIdAsync(user);
-            var applicationId = await _applicationManager.GetIdAsync(application);
+            var applicationId = await _applicationManager.GetIdAsync(application) ??
+                throw new InvalidOperationException("The client application identifier cannot be retrieved.");
             var authorizations = await _authorizationManager.FindAsync(
                 subject: userId,
                 client: applicationId,
@@ -210,8 +222,30 @@ namespace TaskManagement.Auth.Presentation.Controllers
             if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
             {
                 var result = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                if (result?.Principal is null)
+                {
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The token is no longer valid."
+                        }));
+                }
 
-                var user = await _userManager.FindByIdAsync(result.Principal.GetClaim(Claims.Subject));
+                var subject = result.Principal.GetClaim(Claims.Subject);
+                if (string.IsNullOrWhiteSpace(subject))
+                {
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The token is no longer valid."
+                        }));
+                }
+
+                var user = await _userManager.FindByIdAsync(subject);
                 if (user is null)
                 {
                     return Forbid(
@@ -267,7 +301,13 @@ namespace TaskManagement.Auth.Presentation.Controllers
             await PopulateIdentityClaimsAsync(identity, user, userId);
 
             identity.SetScopes(scopes);
-            identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
+            var resources = await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync();
+            if (!string.IsNullOrWhiteSpace(_openIddictSettings.Audience))
+            {
+                resources.Add(_openIddictSettings.Audience);
+            }
+
+            identity.SetResources(resources.Distinct());
 
             var authorization = existingAuthorizations.LastOrDefault();
             authorization ??= await _authorizationManager.CreateAsync(
@@ -308,7 +348,7 @@ namespace TaskManagement.Auth.Presentation.Controllers
                 case Claims.Name or Claims.PreferredUsername:
                     yield return Destinations.AccessToken;
 
-                    if (claim.Subject.HasScope(Scopes.Profile))
+                    if (HasScope(claim, Scopes.Profile))
                         yield return Destinations.IdentityToken;
 
                     yield break;
@@ -316,7 +356,7 @@ namespace TaskManagement.Auth.Presentation.Controllers
                 case Claims.Email:
                     yield return Destinations.AccessToken;
 
-                    if (claim.Subject.HasScope(Scopes.Email))
+                    if (HasScope(claim, Scopes.Email))
                         yield return Destinations.IdentityToken;
 
                     yield break;
@@ -324,7 +364,7 @@ namespace TaskManagement.Auth.Presentation.Controllers
                 case Claims.Role:
                     yield return Destinations.AccessToken;
 
-                    if (claim.Subject.HasScope(Scopes.Roles))
+                    if (HasScope(claim, Scopes.Roles))
                         yield return Destinations.IdentityToken;
 
                     yield break;
@@ -337,5 +377,8 @@ namespace TaskManagement.Auth.Presentation.Controllers
                     yield break;
             }
         }
+
+        private static bool HasScope(Claim claim, string scope)
+            => claim.Subject is ClaimsIdentity identity && identity.HasScope(scope);
     }
 }

@@ -42,6 +42,7 @@ services:
       - OpenIddict__Issuer=https://auth.localhost
       - OpenIddict__Audience=task_management_api_dev
       - OpenIddict__EncryptionKey=${OPENIDDICT_ENCRYPTION_KEY:-DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=}
+      - AuthApi__BaseUrl=https://auth.localhost/
       - ClientSettings__AuthorizationUrl=https://auth.localhost/connect/authorize
       - ClientSettings__TokenUrl=https://auth.localhost/connect/token
       - ClientSettings__Clients__0__ClientId=swagger-client

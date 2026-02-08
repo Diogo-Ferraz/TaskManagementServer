@@ -19,6 +19,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
         private readonly TaskManagementDbContext _dbContext;
         private readonly IMapper _mapper;
         private readonly Mock<ICurrentUserService> _mockCurrentUser;
+        private readonly Mock<IUserDirectoryService> _mockUserDirectory;
         private readonly CreateTaskItemCommandHandler _handler;
 
         private readonly string _projectOwnerId = "project-owner-123";
@@ -33,6 +34,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 .UseInMemoryDatabase(databaseName: $"TestDb_CreateTaskItem_{Guid.NewGuid()}")
                 .Options;
             _mockCurrentUser = new Mock<ICurrentUserService>();
+            _mockUserDirectory = new Mock<IUserDirectoryService>();
             _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
 
             var mappingConfig = new MapperConfiguration(cfg =>
@@ -43,7 +45,15 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
 
             SeedDatabase();
 
-            _handler = new CreateTaskItemCommandHandler(_dbContext, _mockCurrentUser.Object, _mapper);
+            _mockUserDirectory
+                .Setup(s => s.UserExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            _handler = new CreateTaskItemCommandHandler(
+                _dbContext,
+                _mockCurrentUser.Object,
+                _mapper,
+                _mockUserDirectory.Object);
         }
 
         private void SeedDatabase()
@@ -156,6 +166,57 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
             // Assert
             await act.Should().ThrowAsync<UnauthorizedAccessException>();
             _mockCurrentUser.Verify(u => u.Id, Times.Once);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldThrowValidationException_WhenAssignedUserDoesNotExist()
+        {
+            // Arrange
+            var command = new CreateTaskItemCommand
+            {
+                ProjectId = _existingProjectId,
+                Title = "Task With Invalid Assignee",
+                AssignedUserId = "invalid-user"
+            };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_projectOwnerId);
+            _mockUserDirectory
+                .Setup(s => s.UserExistsAsync(command.AssignedUserId!, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+
+            // Act
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            var ex = await act.Should().ThrowAsync<ValidationException>();
+            ex.Which.Errors.Should().ContainKey(nameof(CreateTaskItemCommand.AssignedUserId));
+            ex.Which.Errors[nameof(CreateTaskItemCommand.AssignedUserId)]
+                .Should().Contain(x => x.Contains("existing user", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public async Task Handle_ShouldAutoAddMember_WhenAssignedUserIsNotProjectMember()
+        {
+            // Arrange
+            var newAssigneeId = "new-project-member-999";
+            var command = new CreateTaskItemCommand
+            {
+                ProjectId = _existingProjectId,
+                Title = "Task With New Member",
+                AssignedUserId = newAssigneeId
+            };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_projectOwnerId);
+            _mockUserDirectory
+                .Setup(s => s.UserExistsAsync(newAssigneeId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            result.AssignedUserId.Should().Be(newAssigneeId);
+            var memberExists = await _dbContext.ProjectMembers
+                .AnyAsync(pm => pm.ProjectId == _existingProjectId && pm.UserId == newAssigneeId);
+            memberExists.Should().BeTrue();
         }
 
         public void Dispose()

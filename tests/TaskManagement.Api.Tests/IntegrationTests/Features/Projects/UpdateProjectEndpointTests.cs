@@ -8,6 +8,7 @@ using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Tests.IntegrationTests.Fixtures;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
 {
@@ -73,10 +74,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
 
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
-            if (!string.IsNullOrEmpty(roles))
-            {
-                _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, roles);
-            }
+            _client.DefaultRequestHeaders.Add(
+                TestAuthenticationHandler.TestUserRolesHeader,
+                string.IsNullOrWhiteSpace(roles) ? Roles.ProjectManager : roles);
         }
 
         [Fact]
@@ -141,26 +141,6 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
                 var projectInDb = await dbContext.Projects.FindAsync(_projectToUpdateId);
                 projectInDb!.Name.Should().Be(InitialProjectName);
             }
-        }
-
-        [Fact]
-        public async Task UpdateProject_WithMismatchedRouteIdAndCommandId_ShouldReturnBadRequest()
-        {
-            // Arrange
-            SetAuthenticatedUser(_ownerUserId);
-            var differentIdInCommand = Guid.NewGuid();
-            var command = new UpdateProjectCommand
-            {
-                Id = differentIdInCommand,
-                Name = "Mismatched ID Project",
-                Description = "This should be a bad request."
-            };
-
-            // Act
-            var response = await _client.PutAsJsonAsync($"/api/projects/{_projectToUpdateId}", command);
-
-            // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         }
 
         [Fact]

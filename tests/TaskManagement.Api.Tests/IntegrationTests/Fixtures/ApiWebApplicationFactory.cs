@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Persistence;
 
 namespace TaskManagement.Api.Tests.IntegrationTests.Fixtures
@@ -62,6 +63,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Fixtures
                         .RequireAuthenticatedUser()
                         .Build();
                 });
+
+                services.RemoveAll<IUserDirectoryService>();
+                services.AddSingleton<IUserDirectoryService, TestUserDirectoryService>();
 
                 ConfigureTestServices?.Invoke(services);
             });

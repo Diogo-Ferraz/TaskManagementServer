@@ -10,7 +10,7 @@ namespace TaskManagement.Api.Features.TaskItems.Models
         public TaskStatus Status { get; set; }
         public DateTime? DueDate { get; set; }
         public Guid ProjectId { get; set; }
-        public string? AssignedUserId { get; set; } = string.Empty;
+        public string? AssignedUserId { get; set; }
         public Project Project { get; set; } = null!;
     }
 
