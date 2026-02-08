@@ -9,15 +9,25 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace TaskManagement.Auth.Presentation.Controllers
 {
+    /// <summary>
+    /// Provides the OpenID Connect userinfo endpoint.
+    /// </summary>
     public class UserinfoController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UserinfoController"/> class.
+        /// </summary>
         public UserinfoController(UserManager<ApplicationUser> userManager)
             => _userManager = userManager;
 
         //
         // GET: /api/userinfo
+        /// <summary>
+        /// Returns claims for the currently authenticated user.
+        /// </summary>
+        /// <returns>A JSON object containing user claims.</returns>
         [Authorize(AuthenticationSchemes = OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)]
         [HttpGet("~/connect/userinfo"), HttpPost("~/connect/userinfo"), Produces("application/json")]
         public async Task<IActionResult> Userinfo()

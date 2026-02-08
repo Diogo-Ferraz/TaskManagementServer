@@ -19,6 +19,9 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace TaskManagement.Auth.Features.Authorization
 {
+    /// <summary>
+    /// Handles OpenID Connect authorization and token endpoints.
+    /// </summary>
     public class AuthorizationController : Controller
     {
         private readonly IOpenIddictApplicationManager _applicationManager;
@@ -28,6 +31,9 @@ namespace TaskManagement.Auth.Features.Authorization
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly OpenIddictSettings _openIddictSettings;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AuthorizationController"/> class.
+        /// </summary>
         public AuthorizationController(
             IOpenIddictApplicationManager applicationManager,
             IOpenIddictAuthorizationManager authorizationManager,
@@ -44,6 +50,10 @@ namespace TaskManagement.Auth.Features.Authorization
             _openIddictSettings = openIddictOptions.Value;
         }
 
+        /// <summary>
+        /// Starts or resumes an authorization flow.
+        /// </summary>
+        /// <returns>The authorization response.</returns>
         [HttpGet("~/connect/authorize")]
         [HttpPost("~/connect/authorize")]
         [IgnoreAntiforgeryToken]
@@ -145,6 +155,10 @@ namespace TaskManagement.Auth.Features.Authorization
             }
         }
 
+        /// <summary>
+        /// Accepts the authorization consent and signs in the user.
+        /// </summary>
+        /// <returns>The authorization response.</returns>
         [Authorize, FormValueRequired("submit.Accept")]
         [HttpPost("~/connect/authorize"), ValidateAntiForgeryToken]
         public async Task<IActionResult> Accept()
@@ -193,13 +207,25 @@ namespace TaskManagement.Auth.Features.Authorization
                 existingAuthorizations: authorizations);
         }
 
+        /// <summary>
+        /// Denies the authorization request.
+        /// </summary>
+        /// <returns>A forbid result.</returns>
         [Authorize, FormValueRequired("submit.Deny")]
         [HttpPost("~/connect/authorize"), ValidateAntiForgeryToken]
         public IActionResult Deny() => Forbid(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
+        /// <summary>
+        /// Displays the logout view.
+        /// </summary>
+        /// <returns>The logout view.</returns>
         [HttpGet("~/connect/logout")]
         public IActionResult Logout() => View();
 
+        /// <summary>
+        /// Signs out the current user and ends the session.
+        /// </summary>
+        /// <returns>The sign-out response.</returns>
         [ActionName(nameof(Logout)), HttpPost("~/connect/logout"), ValidateAntiForgeryToken]
         public async Task<IActionResult> LogoutPost()
         {
@@ -213,6 +239,10 @@ namespace TaskManagement.Auth.Features.Authorization
                 });
         }
 
+        /// <summary>
+        /// Exchanges authorization grants for tokens.
+        /// </summary>
+        /// <returns>The token response.</returns>
         [HttpPost("~/connect/token"), IgnoreAntiforgeryToken, Produces("application/json")]
         public async Task<IActionResult> Exchange()
         {

@@ -8,6 +8,9 @@ using TaskManagement.Auth.Features.Users.Models;
 
 namespace TaskManagement.Auth.Features.Users
 {
+    /// <summary>
+    /// API controller for querying users.
+    /// </summary>
     [ApiController]
     [Route("api/users")]
     public class UsersController : ControllerBase
@@ -17,9 +20,20 @@ namespace TaskManagement.Auth.Features.Users
 
         private readonly UserManager<ApplicationUser> _userManager;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UsersController"/> class.
+        /// </summary>
         public UsersController(UserManager<ApplicationUser> userManager)
             => _userManager = userManager;
 
+        /// <summary>
+        /// Retrieves a paged list of users with optional search.
+        /// </summary>
+        /// <param name="search">Optional search term applied to display name, email, or username.</param>
+        /// <param name="skip">Optional number of records to skip.</param>
+        /// <param name="take">Optional number of records to take.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A paged list of users.</returns>
         [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
         [HttpGet]
         public async Task<ActionResult<UserListResponse>> GetUsers(
@@ -66,6 +80,12 @@ namespace TaskManagement.Auth.Features.Users
             });
         }
 
+        /// <summary>
+        /// Retrieves a user by ID.
+        /// </summary>
+        /// <param name="id">The user ID.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The user summary.</returns>
         [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
         [HttpGet("{id}")]
         public async Task<ActionResult<UserSummaryDto>> GetUserById(string id, CancellationToken cancellationToken)
