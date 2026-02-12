@@ -171,7 +171,7 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         /// Partially updates an existing task item.
         /// </summary>
         /// <param name="id">The ID of the task item to patch.</param>
-        /// <param name="command">The command containing partial task updates.</param>
+        /// <param name="command">The command containing partial task updates. Omitted fields are unchanged; explicit null clears nullable fields such as due date, description, and assignee.</param>
         /// <returns>The patched task item.</returns>
         [HttpPatch("{id:guid}")]
         [Authorize(Policy = Policies.CanManageTasks)]

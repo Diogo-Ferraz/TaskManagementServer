@@ -81,7 +81,7 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         /// Partially updates an existing project.
         /// </summary>
         /// <param name="id">The ID of the project to patch.</param>
-        /// <param name="command">The partial project update command.</param>
+        /// <param name="command">The partial project update command. Omitted fields are unchanged; explicit null for description clears it.</param>
         /// <returns>The updated project.</returns>
         /// <response code="200">Project patched successfully.</response>
         /// <response code="400">Invalid patch request.</response>
