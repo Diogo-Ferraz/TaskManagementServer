@@ -75,7 +75,9 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         /// <param name="assignedUserId">Optional assigned user ID filter.</param>
         /// <param name="status">Optional status filter.</param>
         /// <param name="unassignedOnly">Optional filter for unassigned tasks only.</param>
-        /// <param name="limit">Maximum number of tasks to return.</param>
+        /// <param name="limit">Legacy maximum number of tasks to return (uses first page).</param>
+        /// <param name="page">1-based page number.</param>
+        /// <param name="pageSize">Number of items per page (max 500).</param>
         /// <returns>A filtered list of task items.</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IReadOnlyList<TaskItemDto>), StatusCodes.Status200OK)]
@@ -85,15 +87,19 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
             [FromQuery] string? assignedUserId,
             [FromQuery] TaskStatus? status,
             [FromQuery] bool? unassignedOnly,
-            [FromQuery] int limit = 100)
+            [FromQuery] int? limit,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50)
         {
             _logger.LogInformation(
-                "Retrieving tasks with filters. ProjectId: {ProjectId}, AssignedUserId: {AssignedUserId}, Status: {Status}, UnassignedOnly: {UnassignedOnly}, Limit: {Limit}",
+                "Retrieving tasks with filters. ProjectId: {ProjectId}, AssignedUserId: {AssignedUserId}, Status: {Status}, UnassignedOnly: {UnassignedOnly}, Limit: {Limit}, Page: {Page}, PageSize: {PageSize}",
                 projectId,
                 assignedUserId,
                 status,
                 unassignedOnly,
-                limit);
+                limit,
+                page,
+                pageSize);
 
             var taskDtos = await _mediator.Send(new GetTasksQuery
             {
@@ -101,7 +107,9 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
                 AssignedUserId = assignedUserId,
                 Status = status,
                 UnassignedOnly = unassignedOnly,
-                Limit = limit
+                Limit = limit,
+                Page = page,
+                PageSize = pageSize
             });
 
             return Ok(taskDtos);

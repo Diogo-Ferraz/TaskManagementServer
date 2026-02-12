@@ -11,6 +11,7 @@ namespace TaskManagement.Api.Features.Projects.Queries.Handlers
 {
     public class GetProjectsQueryHandler : IRequestHandler<GetProjectsQuery, IReadOnlyList<ProjectDto>>
     {
+        private const int MaxPageSize = 200;
         private readonly TaskManagementDbContext _dbContext;
         private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
@@ -40,8 +41,14 @@ namespace TaskManagement.Api.Features.Projects.Queries.Handlers
                 query = query.Where(p => p.OwnerUserId == currentUserId || p.Members.Any(m => m.UserId == currentUserId));
             }
 
+            var page = request.Page <= 0 ? 1 : request.Page;
+            var pageSize = request.PageSize <= 0 ? 50 : Math.Min(request.PageSize, MaxPageSize);
+            var skip = (page - 1) * pageSize;
+
             return await query
                 .OrderBy(p => p.Name)
+                .Skip(skip)
+                .Take(pageSize)
                 .ProjectTo<ProjectDto>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
         }

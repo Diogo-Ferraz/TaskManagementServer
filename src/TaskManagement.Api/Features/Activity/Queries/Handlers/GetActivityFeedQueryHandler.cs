@@ -12,7 +12,7 @@ namespace TaskManagement.Api.Features.Activity.Queries.Handlers
 {
     public class GetActivityFeedQueryHandler : IRequestHandler<GetActivityFeedQuery, IReadOnlyList<ActivityLogDto>>
     {
-        private const int MaxLimit = 200;
+        private const int MaxPageSize = 200;
         private readonly TaskManagementDbContext _dbContext;
         private readonly ICurrentUserService _currentUserService;
         private readonly IProjectMembershipService _projectMembershipService;
@@ -38,7 +38,13 @@ namespace TaskManagement.Api.Features.Activity.Queries.Handlers
                 throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var limit = request.Limit <= 0 ? 50 : Math.Min(request.Limit, MaxLimit);
+            var page = request.Page <= 0 ? 1 : request.Page;
+            var pageSize = request.PageSize <= 0 ? 50 : Math.Min(request.PageSize, MaxPageSize);
+            if (request.Limit.HasValue && request.Limit.Value > 0)
+            {
+                page = 1;
+                pageSize = Math.Min(request.Limit.Value, MaxPageSize);
+            }
 
             var query = _dbContext.ActivityLogs.AsNoTracking();
             var isAdministrator = _currentUserService.IsInRole(Roles.Administrator);
@@ -77,7 +83,8 @@ namespace TaskManagement.Api.Features.Activity.Queries.Handlers
 
             var activityLogs = await query
                 .OrderByDescending(activity => activity.CreatedAt)
-                .Take(limit)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync(cancellationToken);
 
             return _mapper.Map<IReadOnlyList<ActivityLogDto>>(activityLogs);

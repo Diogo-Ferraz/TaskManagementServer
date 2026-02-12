@@ -171,6 +171,38 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Activity.Queries
             result.First().ProjectId.Should().Be(_projectBId);
         }
 
+        [Fact]
+        public async Task Handle_ShouldApplyPagination_WhenPageAndPageSizeAreProvided()
+        {
+            // Arrange
+            _mockCurrentUser.Setup(u => u.Id).Returns(_adminUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+            var query = new GetActivityFeedQuery { Page = 2, PageSize = 1 };
+
+            // Act
+            var result = await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].ProjectId.Should().Be(_projectBId);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldUseLimitAsFirstPageCompatibility()
+        {
+            // Arrange
+            _mockCurrentUser.Setup(u => u.Id).Returns(_adminUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+            var query = new GetActivityFeedQuery { Limit = 2 };
+
+            // Act
+            var result = await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            result.Should().HaveCount(2);
+            result.Select(x => x.ProjectId).Should().ContainInOrder(_projectCId, _projectBId);
+        }
+
         public void Dispose()
         {
             _dbContext.Dispose();

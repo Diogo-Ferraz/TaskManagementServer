@@ -124,6 +124,8 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         /// <summary>
         /// Retrieves projects visible to the current user.
         /// </summary>
+        /// <param name="page">1-based page number.</param>
+        /// <param name="pageSize">Number of items per page (max 200).</param>
         /// <returns>List of visible projects (all for administrators).</returns>
         /// <response code="200">Projects retrieved successfully.</response>
         /// <response code="401">Unauthorized.</response>
@@ -131,10 +133,14 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         [Authorize(Policy = Policies.CanViewOwnProjects)]
         [ProducesResponseType(typeof(IReadOnlyList<ProjectDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetProjects()
+        public async Task<IActionResult> GetProjects([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
             _logger.LogInformation("API: Retrieving visible projects for current user.");
-            var projectDtos = await _mediator.Send(new GetProjectsQuery());
+            var projectDtos = await _mediator.Send(new GetProjectsQuery
+            {
+                Page = page,
+                PageSize = pageSize
+            });
             return Ok(projectDtos);
         }
 
