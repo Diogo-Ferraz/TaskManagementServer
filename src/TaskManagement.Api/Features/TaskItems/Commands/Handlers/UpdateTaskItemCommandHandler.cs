@@ -80,14 +80,17 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             }
 
             var previousStatus = taskItem.Status;
+            var previousTitle = taskItem.Title;
+            var previousAssignedUserId = taskItem.AssignedUserId;
+            var previousDueDate = taskItem.DueDate;
 
             _mapper.Map(request, taskItem);
             taskItem.AssignedUserId = assignedUserId;
 
-            ActivityLog? activityLog = null;
+            var activityLogs = new List<ActivityLog>();
             if (previousStatus != taskItem.Status)
             {
-                activityLog = new ActivityLog
+                activityLogs.Add(new ActivityLog
                 {
                     Type = ActivityType.TaskStatusChanged,
                     ProjectId = taskItem.ProjectId,
@@ -96,12 +99,52 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                     TaskTitle = taskItem.Title,
                     OldStatus = previousStatus,
                     NewStatus = taskItem.Status
-                };
-                _dbContext.ActivityLogs.Add(activityLog);
+                });
+            }
+
+            if (!string.Equals(previousTitle, taskItem.Title, StringComparison.Ordinal))
+            {
+                activityLogs.Add(new ActivityLog
+                {
+                    Type = ActivityType.TaskRenamed,
+                    ProjectId = taskItem.ProjectId,
+                    TaskItemId = taskItem.Id,
+                    ProjectName = taskItem.Project.Name,
+                    TaskTitle = taskItem.Title
+                });
+            }
+
+            if (!string.Equals(previousAssignedUserId, taskItem.AssignedUserId, StringComparison.Ordinal))
+            {
+                activityLogs.Add(new ActivityLog
+                {
+                    Type = ActivityType.TaskAssigneeChanged,
+                    ProjectId = taskItem.ProjectId,
+                    TaskItemId = taskItem.Id,
+                    ProjectName = taskItem.Project.Name,
+                    TaskTitle = taskItem.Title
+                });
+            }
+
+            if (previousDueDate != taskItem.DueDate)
+            {
+                activityLogs.Add(new ActivityLog
+                {
+                    Type = ActivityType.TaskDueDateChanged,
+                    ProjectId = taskItem.ProjectId,
+                    TaskItemId = taskItem.Id,
+                    ProjectName = taskItem.Project.Name,
+                    TaskTitle = taskItem.Title
+                });
+            }
+
+            if (activityLogs.Count > 0)
+            {
+                _dbContext.ActivityLogs.AddRange(activityLogs);
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
-            if (activityLog != null)
+            foreach (var activityLog in activityLogs)
             {
                 await _activityPublisher.PublishAsync(activityLog, cancellationToken);
             }

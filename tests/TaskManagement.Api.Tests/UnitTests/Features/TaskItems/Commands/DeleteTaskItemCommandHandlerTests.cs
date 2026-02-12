@@ -1,6 +1,8 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using TaskManagement.Api.Features.Activity.Models;
+using TaskManagement.Api.Features.Activity.Services.Interfaces;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.TaskItems.Commands;
 using TaskManagement.Api.Features.TaskItems.Commands.Handlers;
@@ -17,6 +19,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
     {
         private readonly TaskManagementDbContext _dbContext;
         private readonly Mock<ICurrentUserService> _mockCurrentUser;
+        private readonly Mock<IActivityPublisher> _mockActivityPublisher;
         private readonly DeleteTaskItemCommandHandler _handler;
 
         private readonly Guid _taskIdToDelete = Guid.NewGuid();
@@ -31,11 +34,19 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 .UseInMemoryDatabase(databaseName: $"TestDb_DeleteTaskItem_{Guid.NewGuid()}")
                 .Options;
             _mockCurrentUser = new Mock<ICurrentUserService>();
+            _mockActivityPublisher = new Mock<IActivityPublisher>();
             _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
 
             SeedDatabase();
 
-            _handler = new DeleteTaskItemCommandHandler(_dbContext, _mockCurrentUser.Object);
+            _mockActivityPublisher
+                .Setup(p => p.PublishAsync(It.IsAny<ActivityLog>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            _handler = new DeleteTaskItemCommandHandler(
+                _dbContext,
+                _mockActivityPublisher.Object,
+                _mockCurrentUser.Object);
         }
 
         private void SeedDatabase()

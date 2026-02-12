@@ -1,5 +1,7 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using TaskManagement.Api.Features.Activity.Models;
+using TaskManagement.Api.Features.Activity.Services.Interfaces;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
@@ -11,11 +13,16 @@ namespace TaskManagement.Api.Features.Projects.Commands.Handlers
     public class DeleteProjectCommandHandler : IRequestHandler<DeleteProjectCommand>
     {
         private readonly TaskManagementDbContext _dbContext;
+        private readonly IActivityPublisher _activityPublisher;
         private readonly ICurrentUserService _currentUserService;
 
-        public DeleteProjectCommandHandler(TaskManagementDbContext dbContext, ICurrentUserService currentUserService)
+        public DeleteProjectCommandHandler(
+            TaskManagementDbContext dbContext,
+            IActivityPublisher activityPublisher,
+            ICurrentUserService currentUserService)
         {
             _dbContext = dbContext;
+            _activityPublisher = activityPublisher;
             _currentUserService = currentUserService;
         }
 
@@ -40,8 +47,16 @@ namespace TaskManagement.Api.Features.Projects.Commands.Handlers
                 throw new ForbiddenAccessException("User is not authorized to delete this project.");
             }
 
+            var activityLog = new ActivityLog
+            {
+                Type = ActivityType.ProjectDeleted,
+                ProjectId = project.Id,
+                ProjectName = project.Name
+            };
+            _dbContext.ActivityLogs.Add(activityLog);
             _dbContext.Projects.Remove(project);
             await _dbContext.SaveChangesAsync(cancellationToken);
+            await _activityPublisher.PublishAsync(activityLog, cancellationToken);
         }
     }
 }

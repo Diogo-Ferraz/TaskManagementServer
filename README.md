@@ -43,7 +43,16 @@ flowchart LR
 - Filtered task queries for project, assignee, updater, status, unassigned, text search, date range, and pagination.
 
 ### Activity and Notifications
-- Activity log for key events (project created, task created, task status changed).
+- Activity log for key events:
+  - `ProjectCreated`
+  - `ProjectRenamed`
+  - `ProjectDeleted`
+  - `TaskCreated`
+  - `TaskStatusChanged`
+  - `TaskRenamed`
+  - `TaskDeleted`
+  - `TaskAssigneeChanged`
+  - `TaskDueDateChanged`
 - Activity feed endpoint for dashboard consumption with pagination.
 - SignalR hub for real-time updates (`/hubs/activity`) with project and admin group subscriptions.
 

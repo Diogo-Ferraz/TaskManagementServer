@@ -2,6 +2,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using TaskManagement.Api.Features.Activity.Models;
+using TaskManagement.Api.Features.Activity.Services.Interfaces;
 using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Commands.Handlers;
 using TaskManagement.Api.Features.Projects.Mappings;
@@ -18,6 +20,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
         private readonly TaskManagementDbContext _dbContext;
         private readonly IMapper _mapper;
         private readonly Mock<ICurrentUserService> _mockCurrentUser;
+        private readonly Mock<IActivityPublisher> _mockActivityPublisher;
         private readonly UpdateProjectCommandHandler _handler;
 
         private readonly Guid _projectIdToUpdate = Guid.NewGuid();
@@ -31,6 +34,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
                 .UseInMemoryDatabase(databaseName: $"TestDb_UpdateProject_{Guid.NewGuid()}")
                 .Options;
             _mockCurrentUser = new Mock<ICurrentUserService>();
+            _mockActivityPublisher = new Mock<IActivityPublisher>();
             _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
 
             var mappingConfig = new MapperConfiguration(cfg => cfg.AddProfile<ProjectMappingProfile>());
@@ -38,8 +42,13 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
 
             _initialProjectState = SeedDatabase();
 
+            _mockActivityPublisher
+                .Setup(p => p.PublishAsync(It.IsAny<ActivityLog>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
             _handler = new UpdateProjectCommandHandler(
                 _dbContext,
+                _mockActivityPublisher.Object,
                 _mockCurrentUser.Object,
                 _mapper);
         }

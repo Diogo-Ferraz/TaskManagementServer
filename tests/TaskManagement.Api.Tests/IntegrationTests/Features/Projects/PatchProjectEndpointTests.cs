@@ -1,7 +1,9 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
+using TaskManagement.Api.Features.Activity.Models;
 using TaskManagement.Api.Features.Projects.Commands;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
@@ -58,6 +60,12 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
             dto.Should().NotBeNull();
             dto!.Name.Should().Be("Patched Name");
             dto.Description.Should().Be("Initial Description");
+
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+            var renameActivityExists = await db.ActivityLogs
+                .AnyAsync(a => a.ProjectId == _projectId && a.Type == ActivityType.ProjectRenamed);
+            renameActivityExists.Should().BeTrue();
         }
 
         [Fact]

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
+using TaskManagement.Api.Features.Activity.Models;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.TaskItems.Commands;
 using TaskManagement.Api.Features.TaskItems.Models;
@@ -101,6 +102,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             var task = await db.TaskItems.FindAsync(_taskId);
             task.Should().NotBeNull();
             task!.AssignedUserId.Should().BeNull();
+            var activityExists = await db.ActivityLogs
+                .AnyAsync(a => a.TaskItemId == _taskId && a.Type == ActivityType.TaskAssigneeChanged);
+            activityExists.Should().BeTrue();
         }
 
         [Fact]

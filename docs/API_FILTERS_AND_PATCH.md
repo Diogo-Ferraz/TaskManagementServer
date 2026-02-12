@@ -81,3 +81,16 @@ Dashboard summary endpoint:
 - `GET /api/dashboard/summary`
 
 Returns aggregated counters for the current user scope (administrator sees global scope).
+
+## Activity Event Types
+
+`GET /api/activity` and SignalR `activity-created` can return these event types:
+- `ProjectCreated`
+- `ProjectRenamed`
+- `ProjectDeleted`
+- `TaskCreated`
+- `TaskStatusChanged`
+- `TaskRenamed`
+- `TaskDeleted`
+- `TaskAssigneeChanged`
+- `TaskDueDateChanged`
