@@ -168,6 +168,26 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         }
 
         /// <summary>
+        /// Partially updates an existing task item.
+        /// </summary>
+        /// <param name="id">The ID of the task item to patch.</param>
+        /// <param name="command">The command containing partial task updates.</param>
+        /// <returns>The patched task item.</returns>
+        [HttpPatch("{id:guid}")]
+        [Authorize(Policy = Policies.CanManageTasks)]
+        [ProducesResponseType(typeof(TaskItemDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Patch(Guid id, [FromBody] PatchTaskItemCommand command)
+        {
+            _logger.LogInformation("Attempting to patch task item with ID: {TaskItemId}", id);
+            command.Id = id;
+            var updatedTaskDto = await _mediator.Send(command);
+            return Ok(updatedTaskDto);
+        }
+
+        /// <summary>
         /// Deletes a task item.
         /// </summary>
         /// <param name="id">The ID of the task item to delete.</param>

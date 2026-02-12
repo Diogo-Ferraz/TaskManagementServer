@@ -35,6 +35,28 @@ namespace TaskManagement.Api.Features.Projects.Mappings
                  .ForMember(dest => dest.LastModifiedAt, opt => opt.Ignore())
                  .ForMember(dest => dest.LastModifiedByUserId, opt => opt.Ignore())
                  .ForMember(dest => dest.LastModifiedByUserName, opt => opt.Ignore());
+
+            CreateMap<PatchProjectCommand, Project>()
+                 .ForMember(dest => dest.Name, opt =>
+                 {
+                     opt.PreCondition(src => src.Name.HasValue);
+                     opt.MapFrom(src => src.Name.Value!);
+                 })
+                 .ForMember(dest => dest.Description, opt =>
+                 {
+                     opt.PreCondition(src => src.Description.HasValue);
+                     opt.MapFrom(src => src.Description.Value ?? string.Empty);
+                 })
+                 .ForMember(dest => dest.Id, opt => opt.Ignore())
+                 .ForMember(dest => dest.OwnerUserId, opt => opt.Ignore())
+                 .ForMember(dest => dest.Members, opt => opt.Ignore())
+                 .ForMember(dest => dest.TaskItems, opt => opt.Ignore())
+                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                 .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+                 .ForMember(dest => dest.CreatedByUserName, opt => opt.Ignore())
+                 .ForMember(dest => dest.LastModifiedAt, opt => opt.Ignore())
+                 .ForMember(dest => dest.LastModifiedByUserId, opt => opt.Ignore())
+                 .ForMember(dest => dest.LastModifiedByUserName, opt => opt.Ignore());
         }
     }
 }
