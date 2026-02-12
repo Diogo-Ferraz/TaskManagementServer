@@ -21,6 +21,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         private readonly string _projectOwnerId = "user-task-delete-owner-1";
         private readonly string _taskAssigneeId = "user-task-delete-assignee-2";
         private readonly string _projectMemberId = "user-task-delete-member-3";
+        private readonly string _unrelatedUserId = "user-task-delete-unrelated-4";
         // Test Project and Task IDs
         private readonly Guid _projectId = Guid.NewGuid();
         private readonly Guid _taskToDeleteId = Guid.NewGuid();
@@ -101,12 +102,14 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
 
         public Task DisposeAsync() => Task.CompletedTask;
 
-        private void SetAuthenticatedUser(string userId)
+        private void SetAuthenticatedUser(string userId, string? roles = null)
         {
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserIdHeader);
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
-            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.User);
+            _client.DefaultRequestHeaders.Add(
+                TestAuthenticationHandler.TestUserRolesHeader,
+                string.IsNullOrWhiteSpace(roles) ? Roles.User : roles);
         }
 
         [Fact]
@@ -114,6 +117,34 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         {
             // Arrange
             SetAuthenticatedUser(_projectOwnerId);
+            int initialTaskCount;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+                initialTaskCount = await dbContext.TaskItems.Where(t => t.ProjectId == _projectId).CountAsync();
+            }
+
+            // Act
+            var response = await _client.DeleteAsync($"/api/taskitems/{_taskToDeleteId}");
+
+            // Assert Response
+            response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            // Assert Database State
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+                var taskInDb = await dbContext.TaskItems.FindAsync(_taskToDeleteId);
+                taskInDb.Should().BeNull();
+                (await dbContext.TaskItems.Where(t => t.ProjectId == _projectId).CountAsync()).Should().Be(initialTaskCount - 1);
+            }
+        }
+
+        [Fact]
+        public async Task DeleteTaskItem_WhenUserIsAdministrator_ShouldReturnNoContentAndDeleteTask()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.Administrator);
             int initialTaskCount;
             using (var scope = _factory.Services.CreateScope())
             {
@@ -187,6 +218,34 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
                 (await dbContext.TaskItems.Where(t => t.ProjectId == _projectId).CountAsync()).Should().Be(initialTaskCount);
+            }
+        }
+
+        [Fact]
+        public async Task DeleteTaskItem_WhenUserIsProjectManagerAndProjectMember_ShouldReturnNoContent()
+        {
+            // Arrange
+            SetAuthenticatedUser(_projectMemberId, Roles.ProjectManager);
+            int initialTaskCount;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+                initialTaskCount = await dbContext.TaskItems.Where(t => t.ProjectId == _projectId).CountAsync();
+            }
+
+            // Act
+            var response = await _client.DeleteAsync($"/api/taskitems/{_taskToDeleteId}");
+
+            // Assert Response
+            response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            // Assert Database State
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+                var taskInDb = await dbContext.TaskItems.FindAsync(_taskToDeleteId);
+                taskInDb.Should().BeNull();
+                (await dbContext.TaskItems.Where(t => t.ProjectId == _projectId).CountAsync()).Should().Be(initialTaskCount - 1);
             }
         }
 

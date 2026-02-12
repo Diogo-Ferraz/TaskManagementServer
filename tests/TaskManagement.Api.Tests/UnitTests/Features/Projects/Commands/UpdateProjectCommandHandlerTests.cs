@@ -9,6 +9,7 @@ using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
 {
@@ -127,6 +128,48 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
 
             var project = await _dbContext.Projects.FindAsync(_projectIdToUpdate);
             project!.Name.Should().Be(_initialProjectState.Name);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldUpdateProject_WhenUserIsProjectManager()
+        {
+            // Arrange
+            var command = new UpdateProjectCommand
+            {
+                Id = _projectIdToUpdate,
+                Name = "Updated By PM",
+                Description = "PM Update"
+            };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_otherUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.ProjectManager)).Returns(true);
+
+            // Act
+            var resultDto = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            resultDto.Name.Should().Be(command.Name);
+            resultDto.Description.Should().Be(command.Description);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldUpdateProject_WhenUserIsAdministrator()
+        {
+            // Arrange
+            var command = new UpdateProjectCommand
+            {
+                Id = _projectIdToUpdate,
+                Name = "Updated By Admin",
+                Description = "Admin Update"
+            };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_otherUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+
+            // Act
+            var resultDto = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            resultDto.Name.Should().Be(command.Name);
+            resultDto.Description.Should().Be(command.Description);
         }
 
         [Fact]

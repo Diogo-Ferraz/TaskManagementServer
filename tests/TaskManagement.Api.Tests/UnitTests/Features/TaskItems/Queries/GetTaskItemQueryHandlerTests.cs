@@ -13,6 +13,7 @@ using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
 using TaskStatus = TaskManagement.Api.Features.TaskItems.Models.TaskStatus;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
 {
@@ -121,6 +122,22 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
                 .Excluding(dto => dto.CreatedByUserId)
                 .Excluding(dto => dto.LastModifiedByUserId));
             _mockCurrentUser.Verify(u => u.Id, Times.Once);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldReturnTaskItemDto_WhenUserIsAdministrator()
+        {
+            // Arrange
+            var query = new GetTaskItemQuery { Id = _existingTaskId };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_unrelatedUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+
+            // Act
+            var result = await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Id.Should().Be(_existingTaskId);
         }
 
         [Fact]

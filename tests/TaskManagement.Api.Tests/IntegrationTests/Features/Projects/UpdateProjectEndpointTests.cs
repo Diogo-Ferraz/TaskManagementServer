@@ -118,10 +118,29 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
         }
 
         [Fact]
-        public async Task UpdateProject_WhenUserIsNotOwner_ShouldReturnForbidden()
+        public async Task UpdateProject_WhenUserIsProjectManagerButNotOwner_ShouldReturnOk()
         {
             // Arrange
-            SetAuthenticatedUser(_otherUserId);
+            SetAuthenticatedUser(_otherUserId, Roles.ProjectManager);
+            var command = new UpdateProjectCommand
+            {
+                Id = _projectToUpdateId,
+                Name = "Update By PM",
+                Description = "Allowed for PM."
+            };
+
+            // Act
+            var response = await _client.PutAsJsonAsync($"/api/projects/{_projectToUpdateId}", command);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task UpdateProject_WhenUserIsNotOwnerAndNotManager_ShouldReturnForbidden()
+        {
+            // Arrange
+            SetAuthenticatedUser(_otherUserId, Roles.User);
             var command = new UpdateProjectCommand
             {
                 Id = _projectToUpdateId,

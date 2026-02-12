@@ -14,6 +14,7 @@ using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
 using TaskStatus = TaskManagement.Api.Features.TaskItems.Models.TaskStatus;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
 {
@@ -30,6 +31,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
         private readonly Guid _projectId = Guid.NewGuid();
         private readonly string _projectOwnerId = "project-owner-123";
         private readonly string _taskAssigneeId = "task-assignee-456";
+        private readonly string _projectMemberId = "project-member-321";
         private readonly string _otherUserId = "other-user-789";
         private TaskItem _initialTaskState;
 
@@ -81,6 +83,13 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                     {
                         ProjectId = _projectId,
                         UserId = _taskAssigneeId,
+                        JoinedAt = DateTime.UtcNow,
+                        AddedByUserId = _projectOwnerId
+                    },
+                    new ProjectMember
+                    {
+                        ProjectId = _projectId,
+                        UserId = _projectMemberId,
                         JoinedAt = DateTime.UtcNow,
                         AddedByUserId = _projectOwnerId
                     }
@@ -146,6 +155,39 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
             updatedTask!.Title.Should().Be(command.Title);
             updatedTask.LastModifiedByUserId.Should().Be(_taskAssigneeId);
             _mockCurrentUser.Verify(u => u.Id, Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task Handle_ShouldUpdateTaskItem_WhenUserIsProjectMember()
+        {
+            // Arrange
+            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Updated by Member", Status = TaskStatus.InProgress };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_projectMemberId);
+
+            // Act
+            var resultDto = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            resultDto.Should().NotBeNull();
+            resultDto.Title.Should().Be(command.Title);
+            resultDto.Status.Should().Be(command.Status);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldUpdateTaskItem_WhenUserIsAdministrator()
+        {
+            // Arrange
+            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Updated by Admin", Status = TaskStatus.Done };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_otherUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+
+            // Act
+            var resultDto = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            resultDto.Should().NotBeNull();
+            resultDto.Title.Should().Be(command.Title);
+            resultDto.Status.Should().Be(command.Status);
         }
 
         [Fact]

@@ -49,7 +49,7 @@ namespace TaskManagement.Api.Infrastructure.Security.Configuration
                 .AddPolicy(Policies.CanManageProjects, policy =>
                     policy.RequireRole(Roles.Administrator, Roles.ProjectManager))
                 .AddPolicy(Policies.CanManageTasks, policy =>
-                    policy.RequireRole(Roles.Administrator, Roles.User))
+                    policy.RequireRole(Roles.Administrator, Roles.ProjectManager, Roles.User))
                 .AddPolicy(Policies.CanViewOwnProjects, policy =>
                     policy.RequireRole(Roles.Administrator, Roles.ProjectManager, Roles.User));
 

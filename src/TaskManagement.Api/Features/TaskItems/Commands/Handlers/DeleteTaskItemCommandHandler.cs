@@ -4,6 +4,7 @@ using TaskManagement.Api.Features.TaskItems.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 {
@@ -37,8 +38,15 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                 throw new NotFoundException(nameof(TaskItem), request.Id);
             }
 
+            var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
+            var isProjectManager = _currentUserService.IsInRole(Roles.ProjectManager);
+            var isProjectMember = await _dbContext.ProjectMembers
+                .AnyAsync(pm => pm.ProjectId == taskItem.ProjectId && pm.UserId == currentUserId, cancellationToken);
             bool isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
-            if (!isProjectOwner)
+            var canDeleteAsProjectManager = isProjectManager && (isProjectOwner || isProjectMember);
+
+            // Keep user deletes stricter: owner-only unless elevated role.
+            if (!isAdmin && !canDeleteAsProjectManager && !isProjectOwner)
             {
                 throw new ForbiddenAccessException("User is not authorized to delete this task item.");
             }

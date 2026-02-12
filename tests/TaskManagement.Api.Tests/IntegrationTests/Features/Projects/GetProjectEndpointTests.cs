@@ -79,12 +79,14 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
 
         public Task DisposeAsync() => Task.CompletedTask;
 
-        private void SetAuthenticatedUser(string userId)
+        private void SetAuthenticatedUser(string userId, string? roles = null)
         {
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserIdHeader);
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
-            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.ProjectManager);
+            _client.DefaultRequestHeaders.Add(
+                TestAuthenticationHandler.TestUserRolesHeader,
+                string.IsNullOrWhiteSpace(roles) ? Roles.ProjectManager : roles);
         }
 
         [Fact]
@@ -123,16 +125,16 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
         }
 
         [Fact]
-        public async Task GetProjectById_WhenUserIsNotOwnerOrMember_ShouldReturnNotFound()
+        public async Task GetProjectById_WhenUserIsNotOwnerOrMemberAndNotManager_ShouldReturnForbidden()
         {
             // Arrange
-            SetAuthenticatedUser(_user1Id);
+            SetAuthenticatedUser(_user1Id, Roles.User);
 
             // Act
             var response = await _client.GetAsync($"/api/projects/{_projectUnrelatedId}");
 
             // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         }
 
         [Fact]
@@ -179,6 +181,39 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
             projects.Should().HaveCount(2);
             projects.Should().Contain(p => p.Id == _project1Id);
             projects.Should().Contain(p => p.Id == _project2Id);
+            projects.Should().NotContain(p => p.Id == _projectUnrelatedId);
+        }
+
+        [Fact]
+        public async Task GetProjects_WhenUserIsAdministrator_ShouldReturnAllProjects()
+        {
+            // Arrange
+            SetAuthenticatedUser(_user1Id, Roles.Administrator);
+
+            // Act
+            var response = await _client.GetAsync("/api/projects");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var projects = await response.Content.ReadFromJsonAsync<List<ProjectDto>>();
+            projects.Should().NotBeNull();
+            projects.Should().HaveCount(3);
+        }
+
+        [Fact]
+        public async Task GetProjects_WhenUserIsNotAdministrator_ShouldReturnOnlyVisibleProjects()
+        {
+            // Arrange
+            SetAuthenticatedUser(_user1Id, Roles.User);
+
+            // Act
+            var response = await _client.GetAsync("/api/projects");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var projects = await response.Content.ReadFromJsonAsync<List<ProjectDto>>();
+            projects.Should().NotBeNull();
+            projects.Should().HaveCount(2);
             projects.Should().NotContain(p => p.Id == _projectUnrelatedId);
         }
     }

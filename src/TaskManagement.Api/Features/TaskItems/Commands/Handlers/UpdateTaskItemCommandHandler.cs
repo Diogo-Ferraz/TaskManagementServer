@@ -10,6 +10,7 @@ using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 {
@@ -52,10 +53,12 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             {
                 throw new NotFoundException(nameof(TaskItem), request.Id);
             }
+            var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
+            var isProjectMember = taskItem.Project.Members.Any(m => m.UserId == currentUserId);
             bool isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
             bool isAssignee = taskItem.AssignedUserId == currentUserId;
 
-            if (!isProjectOwner && !isAssignee)
+            if (!isAdmin && !isProjectOwner && !isAssignee && !isProjectMember)
             {
                 throw new ForbiddenAccessException("User is not authorized to update this task item.");
             }

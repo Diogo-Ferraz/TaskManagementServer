@@ -64,12 +64,14 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
 
         public Task DisposeAsync() => Task.CompletedTask;
 
-        private void SetAuthenticatedUser(string userId)
+        private void SetAuthenticatedUser(string userId, string? roles = null)
         {
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserIdHeader);
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
-            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.User);
+            _client.DefaultRequestHeaders.Add(
+                TestAuthenticationHandler.TestUserRolesHeader,
+                string.IsNullOrWhiteSpace(roles) ? Roles.User : roles);
         }
 
         [Fact]
@@ -132,6 +134,30 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             createdDto!.Title.Should().Be(command.Title);
             createdDto.ProjectId.Should().Be(_project1Id);
             createdDto.CreatedByUserId.Should().Be(_projectMemberId);
+        }
+
+        [Fact]
+        public async Task CreateTaskItem_WhenUserIsAdministrator_ShouldReturnCreatedAndTaskDto()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.Administrator);
+            var command = new CreateTaskItemCommand
+            {
+                ProjectId = _project1Id,
+                Title = "New Task by Admin",
+                Status = TaskStatus.Todo
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/taskitems", command);
+
+            // Assert Response
+            response.StatusCode.Should().Be(HttpStatusCode.Created);
+            var createdDto = await response.Content.ReadFromJsonAsync<TaskItemDto>();
+            createdDto.Should().NotBeNull();
+            createdDto!.Title.Should().Be(command.Title);
+            createdDto.ProjectId.Should().Be(_project1Id);
+            createdDto.CreatedByUserId.Should().Be(_unrelatedUserId);
         }
 
         [Fact]

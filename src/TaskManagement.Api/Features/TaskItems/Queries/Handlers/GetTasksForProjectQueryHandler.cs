@@ -6,6 +6,7 @@ using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
 {
@@ -33,7 +34,10 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
                 throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            bool canViewProject = await _dbContext.Projects
+            var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
+            var isProjectManager = _currentUserService.IsInRole(Roles.ProjectManager);
+
+            bool canViewProject = isAdmin || isProjectManager || await _dbContext.Projects
                 .AnyAsync(p => p.Id == request.ProjectId &&
                               (p.OwnerUserId == currentUserId || p.Members.Any(m => m.UserId == currentUserId)),
                           cancellationToken);

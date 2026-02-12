@@ -10,6 +10,7 @@ using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 {
@@ -52,7 +53,9 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                 throw new NotFoundException($"Project with ID {request.ProjectId} not found.");
             }
 
-            var isAuthorized = project.OwnerUserId == currentUserId
+            var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
+            var isAuthorized = isAdmin
+                               || project.OwnerUserId == currentUserId
                                || project.Members.Any(m => m.UserId == currentUserId);
 
             if (!isAuthorized)
