@@ -28,6 +28,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         private readonly Guid _nonExistentTaskId = Guid.NewGuid();
         private readonly Guid _projectWithoutAccessId = Guid.NewGuid();
         private readonly Guid _emptyProjectId = Guid.NewGuid();
+        private DateTime _seedNow;
 
 
         public GetTaskItemEndpointTests(ApiWebApplicationFactory<Program> factory)
@@ -43,6 +44,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             await _factory.SeedDatabaseAsync(db =>
             {
                 var now = DateTime.UtcNow;
+                _seedNow = now;
                 var project1 = new Project
                 {
                     Id = _project1Id,
@@ -335,6 +337,46 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task GetTasks_WithUpdatedByAndSearchFilters_ShouldReturnMatchingTasks()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.Administrator);
+            var baselineResponse = await _client.GetAsync("/api/taskitems?search=Two%20Details");
+            baselineResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var baselineTasks = await baselineResponse.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+            var updatedByUserId = baselineTasks!.Single().LastModifiedByUserId;
+
+            // Act
+            var response = await _client.GetAsync($"/api/taskitems?updatedByUserId={updatedByUserId}&search=Two%20Details");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var tasks = await response.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+            tasks.Should().NotBeNull();
+            tasks.Should().HaveCount(1);
+            tasks![0].Title.Should().Be("Task Two Details");
+            tasks[0].LastModifiedByUserId.Should().Be(updatedByUserId);
+        }
+
+        [Fact]
+        public async Task GetTasks_WithLastModifiedRange_ShouldReturnTasksInRange()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.Administrator);
+            var from = Uri.EscapeDataString(_seedNow.AddMinutes(-2).ToString("O"));
+            var to = Uri.EscapeDataString(_seedNow.AddMinutes(2).ToString("O"));
+
+            // Act
+            var response = await _client.GetAsync($"/api/taskitems?lastModifiedFrom={from}&lastModifiedTo={to}");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var tasks = await response.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+            tasks.Should().NotBeNull();
+            tasks.Should().HaveCount(3);
         }
 
         [Fact]

@@ -67,6 +67,30 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
                 query = query.Where(t => t.AssignedUserId == assignedUserId);
             }
 
+            if (!string.IsNullOrWhiteSpace(request.UpdatedByUserId))
+            {
+                var updatedByUserId = request.UpdatedByUserId.Trim();
+                query = query.Where(t => t.LastModifiedByUserId == updatedByUserId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                var search = request.Search.Trim();
+                query = query.Where(t =>
+                    t.Title.Contains(search) ||
+                    ((t.Description ?? string.Empty).Contains(search)));
+            }
+
+            if (request.LastModifiedFrom.HasValue)
+            {
+                query = query.Where(t => t.LastModifiedAt >= request.LastModifiedFrom.Value);
+            }
+
+            if (request.LastModifiedTo.HasValue)
+            {
+                query = query.Where(t => t.LastModifiedAt <= request.LastModifiedTo.Value);
+            }
+
             if (request.Status.HasValue)
             {
                 query = query.Where(t => t.Status == request.Status.Value);

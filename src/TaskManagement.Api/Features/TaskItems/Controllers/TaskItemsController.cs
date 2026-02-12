@@ -73,6 +73,10 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         /// </summary>
         /// <param name="projectId">Optional project ID filter.</param>
         /// <param name="assignedUserId">Optional assigned user ID filter.</param>
+        /// <param name="updatedByUserId">Optional last-modified-by user ID filter.</param>
+        /// <param name="search">Optional text search in task title/description.</param>
+        /// <param name="lastModifiedFrom">Optional inclusive lower bound for last modified timestamp (UTC recommended).</param>
+        /// <param name="lastModifiedTo">Optional inclusive upper bound for last modified timestamp (UTC recommended).</param>
         /// <param name="status">Optional status filter.</param>
         /// <param name="unassignedOnly">Optional filter for unassigned tasks only.</param>
         /// <param name="limit">Legacy maximum number of tasks to return (uses first page).</param>
@@ -85,6 +89,10 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         public async Task<IActionResult> GetTasks(
             [FromQuery] Guid? projectId,
             [FromQuery] string? assignedUserId,
+            [FromQuery] string? updatedByUserId,
+            [FromQuery] string? search,
+            [FromQuery] DateTime? lastModifiedFrom,
+            [FromQuery] DateTime? lastModifiedTo,
             [FromQuery] TaskStatus? status,
             [FromQuery] bool? unassignedOnly,
             [FromQuery] int? limit,
@@ -92,9 +100,13 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
             [FromQuery] int pageSize = 50)
         {
             _logger.LogInformation(
-                "Retrieving tasks with filters. ProjectId: {ProjectId}, AssignedUserId: {AssignedUserId}, Status: {Status}, UnassignedOnly: {UnassignedOnly}, Limit: {Limit}, Page: {Page}, PageSize: {PageSize}",
+                "Retrieving tasks with filters. ProjectId: {ProjectId}, AssignedUserId: {AssignedUserId}, UpdatedByUserId: {UpdatedByUserId}, Search: {Search}, LastModifiedFrom: {LastModifiedFrom}, LastModifiedTo: {LastModifiedTo}, Status: {Status}, UnassignedOnly: {UnassignedOnly}, Limit: {Limit}, Page: {Page}, PageSize: {PageSize}",
                 projectId,
                 assignedUserId,
+                updatedByUserId,
+                search,
+                lastModifiedFrom,
+                lastModifiedTo,
                 status,
                 unassignedOnly,
                 limit,
@@ -105,6 +117,10 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
             {
                 ProjectId = projectId,
                 AssignedUserId = assignedUserId,
+                UpdatedByUserId = updatedByUserId,
+                Search = search,
+                LastModifiedFrom = lastModifiedFrom,
+                LastModifiedTo = lastModifiedTo,
                 Status = status,
                 UnassignedOnly = unassignedOnly,
                 Limit = limit,

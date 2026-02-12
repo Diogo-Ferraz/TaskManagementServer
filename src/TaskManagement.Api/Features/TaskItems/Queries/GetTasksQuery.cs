@@ -8,6 +8,10 @@ namespace TaskManagement.Api.Features.TaskItems.Queries
     {
         public Guid? ProjectId { get; set; }
         public string? AssignedUserId { get; set; }
+        public string? UpdatedByUserId { get; set; }
+        public string? Search { get; set; }
+        public DateTime? LastModifiedFrom { get; set; }
+        public DateTime? LastModifiedTo { get; set; }
         public TaskStatus? Status { get; set; }
         public bool? UnassignedOnly { get; set; }
         public int? Limit { get; set; }
