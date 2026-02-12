@@ -8,6 +8,8 @@ using TaskManagement.Api.Features.TaskItems.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
+using TaskManagement.Api.Infrastructure.Persistence.Models;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
 {
@@ -20,6 +22,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
         private readonly Guid _taskIdToDelete = Guid.NewGuid();
         private readonly Guid _projectId = Guid.NewGuid();
         private readonly string _projectOwnerId = "project-owner-123";
+        private readonly string _projectMemberId = "project-member-456";
         private readonly string _otherUserId = "other-user-789";
 
         public DeleteTaskItemCommandHandlerTests()
@@ -37,7 +40,26 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
 
         private void SeedDatabase()
         {
-            var project = new Project { Id = _projectId, Name = "Project For Task Deletion", OwnerUserId = _projectOwnerId, CreatedAt = DateTime.UtcNow, CreatedByUserId = _projectOwnerId, LastModifiedAt = DateTime.UtcNow, LastModifiedByUserId = _projectOwnerId };
+            var project = new Project
+            {
+                Id = _projectId,
+                Name = "Project For Task Deletion",
+                OwnerUserId = _projectOwnerId,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = _projectOwnerId,
+                LastModifiedAt = DateTime.UtcNow,
+                LastModifiedByUserId = _projectOwnerId,
+                Members = new List<ProjectMember>
+                {
+                    new ProjectMember
+                    {
+                        ProjectId = _projectId,
+                        UserId = _projectMemberId,
+                        JoinedAt = DateTime.UtcNow,
+                        AddedByUserId = _projectOwnerId
+                    }
+                }
+            };
             var task = new TaskItem { Id = _taskIdToDelete, Title = "Task to Delete", ProjectId = _projectId, Project = project, AssignedUserId = _projectOwnerId, CreatedAt = DateTime.UtcNow, CreatedByUserId = _projectOwnerId, LastModifiedAt = DateTime.UtcNow, LastModifiedByUserId = _projectOwnerId };
             _dbContext.Projects.Add(project);
             _dbContext.TaskItems.Add(task);
@@ -92,6 +114,38 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
             await act.Should().ThrowAsync<ForbiddenAccessException>();
             _mockCurrentUser.Verify(u => u.Id, Times.Once);
             (await _dbContext.TaskItems.CountAsync()).Should().Be(initialTaskCount);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldDeleteTaskItem_WhenUserIsAdministrator()
+        {
+            // Arrange
+            var command = new DeleteTaskItemCommand { Id = _taskIdToDelete };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_otherUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+
+            // Act
+            await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            var deletedTask = await _dbContext.TaskItems.FindAsync(_taskIdToDelete);
+            deletedTask.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task Handle_ShouldDeleteTaskItem_WhenUserIsProjectManagerAndProjectMember()
+        {
+            // Arrange
+            var command = new DeleteTaskItemCommand { Id = _taskIdToDelete };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_projectMemberId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.ProjectManager)).Returns(true);
+
+            // Act
+            await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            var deletedTask = await _dbContext.TaskItems.FindAsync(_taskIdToDelete);
+            deletedTask.Should().BeNull();
         }
 
         [Fact]

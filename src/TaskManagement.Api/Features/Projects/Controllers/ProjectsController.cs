@@ -122,6 +122,23 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         }
 
         /// <summary>
+        /// Retrieves projects visible to the current user.
+        /// </summary>
+        /// <returns>List of visible projects (all for administrators).</returns>
+        /// <response code="200">Projects retrieved successfully.</response>
+        /// <response code="401">Unauthorized.</response>
+        [HttpGet]
+        [Authorize(Policy = Policies.CanViewOwnProjects)]
+        [ProducesResponseType(typeof(IReadOnlyList<ProjectDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetProjects()
+        {
+            _logger.LogInformation("API: Retrieving visible projects for current user.");
+            var projectDtos = await _mediator.Send(new GetProjectsQuery());
+            return Ok(projectDtos);
+        }
+
+        /// <summary>
         /// Retrieves members of a project by project ID.
         /// </summary>
         /// <param name="id">The ID of the project.</param>

@@ -103,10 +103,38 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
         }
 
         [Fact]
-        public async Task DeleteProject_WhenUserIsNotOwner_ShouldReturnForbidden()
+        public async Task DeleteProject_WhenUserIsProjectManagerButNotOwner_ShouldReturnNoContent()
         {
             // Arrange
-            SetAuthenticatedUser(_otherUserId);
+            SetAuthenticatedUser(_otherUserId, Roles.ProjectManager);
+            int initialProjectCount;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+                initialProjectCount = await dbContext.Projects.CountAsync();
+            }
+
+            // Act
+            var response = await _client.DeleteAsync($"/api/projects/{_projectToDeleteId}");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            // Assert
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+                var projectInDb = await dbContext.Projects.FindAsync(_projectToDeleteId);
+                projectInDb.Should().BeNull();
+                (await dbContext.Projects.CountAsync()).Should().Be(initialProjectCount - 1);
+            }
+        }
+
+        [Fact]
+        public async Task DeleteProject_WhenUserIsNotOwnerAndNotManager_ShouldReturnForbidden()
+        {
+            // Arrange
+            SetAuthenticatedUser(_otherUserId, Roles.User);
             int initialProjectCount;
             using (var scope = _factory.Services.CreateScope())
             {

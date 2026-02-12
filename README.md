@@ -1,151 +1,116 @@
 # Task Management Server
 
-A task and project management server composed of two independent services (Auth and API) and a SQL Server database. The system implements OAuth2 and OpenID Connect using OpenIddict, exposes secured endpoints validated by roles and scopes, and follows a vertical-slice feature architecture using MediatR, FluentValidation, AutoMapper, and EF Core.
+Backend for a Jira-style task management platform with project-based collaboration, role-based access control, and real-time activity updates.
 
-Designed for containerized development with Docker and fronted by a Caddy reverse proxy that handles TLS termination and local development certificates.
+The solution is split into two services:
+- `TaskManagement.Auth`: OAuth2/OIDC with OpenIddict + ASP.NET Identity.
+- `TaskManagement.Api`: Vertical-slice ASP.NET Core API for Projects, TaskItems, and Activity feed (including SignalR notifications).
 
----
-
-## System Overview
-
-Below is the architecture diagram describing the full stack:
-
-                         +-----------------------+
-                         |       SPA Client      |
-                         |  (future standalone)  |
-                         +-----------+-----------+
-                                     |
-                                     | HTTPS
-                                     v
-                     +---------------+---------------+
-                     |             Caddy              |
-                     |  Reverse Proxy + Internal TLS  |
-                     +-------+---------------+--------+
-                             |               |
-                    HTTPS    |               |   HTTPS
-                             v               v
-                 +------------------+     +-------------------+
-                 |   Auth Service   |     |    API Service    |
-                 |   OpenIddict +   |     |    Access Token   |
-                 | ASP.NET Identity |     |    Validation     |
-                 +------------------+     +-------------------+
-                            |                   |
-                            |                   |
-                            v                   v
-                       +------------------------------+
-                       |       SQL Server 2022        |
-                       |   Database for Auth + API    |
-                       +------------------------------+
-
----
-
-## Features
-
-### Domain Entities
-
-The system exposes three core domain objects:
-
-- **Projects**: contain metadata, ownership, and audit fields.
-- **TaskItems**: belong to projects, include assignment and status state, and also include audit fields.
-- **Users**: authenticated and authorized via ASP.NET Identity.
-
-Each entity except Users includes audit metadata:
-
-- CreatedBy and CreatedAt
-- LastUpdatedBy and LastUpdatedAt
-
-### Security Model
-
-Three roles govern permissions:
-
-- **ProjectManager**: Full CRUD on Projects, can create and assign Tasks.
-- **User**: CRUD on TaskItems only.
-- **Administrator**: Full permissions across both domains.
-
-Auth implements OAuth2 Authorization Code Flow with PKCE. The API enforces authorization using:
-
-- Scopes
-- Role checks
-- Resource ownership validation
+Designed for local full-stack development with Docker + Caddy and structured to evolve toward production deployment patterns.
 
 ---
 
 ## Architecture
 
-### Why Vertical Slice Architecture
+```mermaid
+flowchart LR
+    SPA["SPA Client (future)"] -->|"HTTPS"| Caddy["Caddy Reverse Proxy"]
+    Caddy -->|"HTTPS"| Auth["Auth Service<br/>OpenIddict + Identity"]
+    Caddy -->|"HTTPS"| Api["API Service<br/>Projects + TaskItems + Activity"]
+    Auth --> Db[("SQL Server")]
+    Api --> Db
+```
 
-Vertical slice architecture organizes the application by features, not layers. Each feature contains:
+---
 
+## Current Capabilities
+
+### Authentication and Authorization
+- OAuth2 / OpenID Connect via OpenIddict.
+- JWT validation in API service.
+- Role and resource-based authorization checks in handlers.
+
+### Project Management
+- Create, update, delete, and read projects.
+- Project membership tracking (`ProjectMember`) with audit fields.
+- Project members listing endpoint.
+
+### Task Management
+- Create, update, delete, and read task items.
+- Assignment support and project membership auto-add for newly assigned users.
+- Filtered task queries for project, assignee, status, unassigned, and limit.
+
+### Activity and Notifications
+- Activity log for key events (project created, task created, task status changed).
+- Activity feed endpoint for dashboard consumption.
+- SignalR hub for real-time updates (`/hubs/activity`) with project and admin group subscriptions.
+
+---
+
+## Role Model
+
+High-level role intent:
+- `Administrator`: platform-wide superuser.
+- `ProjectManager`: project delivery owner with project/task management in project scope.
+- `User`: day-to-day contributor with task-focused access.
+
+For endpoint-level details, see:
+- [API Role Matrix](docs/ROLE_MATRIX.md)
+
+---
+
+## Architecture Style
+
+Vertical slice architecture organizes by feature instead of technical layers.
+
+Each feature typically contains:
 - Commands and queries
 - Handlers
 - Validators
-- Mapping profiles
-- Controller endpoint definitions
+- Mappings
+- Controller endpoints
 
 Benefits:
+- Better feature ownership
+- Lower coupling between slices
+- Cleaner incremental changes
 
-- Faster comprehension of each feature
-- No mega service classes
-- Fewer merge conflicts in team environments
-- Clean separation of concerns
+---
 
-### Patterns and Libraries
+## Tech Stack
 
-- **MediatR**: dispatches commands and queries.
-- **FluentValidation**: colocated validators per command.
-- **AutoMapper**: DTO mapping configured per slice.
-- **EF Core**: persistence with entity configurations.
-- **Serilog**: structured logging and request pipeline logging.
-- **Health Checks**: integrated for container diagnostics.
+- ASP.NET Core (.NET 8)
+- EF Core (SQL Server)
+- MediatR
+- FluentValidation
+- AutoMapper
+- OpenIddict
+- Serilog
+- xUnit + integration testing
+- Docker Compose + Caddy
 
 ---
 
 ## Services
 
-### Auth Service
+### `TaskManagement.Auth`
+- OpenIddict authorization server
+- ASP.NET Identity user and role management
+- Authorization Code + PKCE support
+- Issues access and refresh tokens
 
-- OpenIddict-powered OAuth2 and OpenID Connect server.
-- ASP.NET Identity for users and roles.
-- Authorization Code + PKCE, refresh tokens.
-- Razor UI for login and consent.
-- Issues access and refresh tokens to the SPA or future clients.
+### `TaskManagement.Api`
+- Projects, TaskItems, Activity features
+- Token validation and authorization enforcement
+- SignalR real-time activity events
+- Unit and integration tests
 
-### API Service
+### `SQL Server`
+- Shared persistence for Auth and API domains
 
-- Vertical slice features (Projects, TaskItems).
-- Validates JWTs and role-based policies.
-- Enforces ownership and domain rules inside handlers.
-- Includes both unit and integration tests.
-
-### Database
-
-- SQL Server 2022 container.
-- Initialization scripts included.
-- Used by both Auth and API.
-
----
-
-## Reverse Proxy and HTTPS
-
-Caddy runs as the entrypoint of the environment.
-
-- Terminates TLS for all services.
-- Issues local development certificates using `tls internal`.
-- Routes to Auth and API using service names.
-
----
-
-## Testing
-
-- Auth Service: full integration test suite.
-- API Service: unit and integration tests across features.
-
-Tests validate:
-
-- Authorization rules
-- Domain logic
-- Handler correctness
-- Persistence
+### `Caddy`
+- Local HTTPS termination
+- Routing for `auth.localhost` and `api.localhost`
 
 ---
 
@@ -153,16 +118,45 @@ Tests validate:
 
 ### Requirements
 - Docker
-- Docker Compose
-- Hosts file update: map `api.localhost` and `auth.localhost` to `127.0.0.1`.
+- Docker Compose (v2)
+- Hosts file entries:
+  - `127.0.0.1 api.localhost`
+  - `127.0.0.1 auth.localhost`
+
+### Optional environment setup
+You can copy `.env.example` to `.env` and adjust values if needed.
 
 ### Run
-
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
-Everything starts fully configured, including TLS and routing.
+This starts SQL Server, Auth, API, and Caddy with local HTTPS routing.
 
 ---
 
+## Testing
+
+Run full solution tests:
+
+```bash
+dotnet test TaskManagementServer.sln -c Debug
+```
+
+Test coverage includes:
+- Authorization and role behavior
+- Command/query handler rules
+- API integration flows
+- Persistence and mappings
+
+---
+
+## Project Goal
+
+This project is intended as a production-minded learning and portfolio codebase for a full-stack Jira-like platform.
+
+Backend priorities:
+- Correct authorization and tenancy boundaries
+- Clean feature-oriented architecture
+- Observable and testable behavior
+- Real-time user-facing events for SPA dashboards

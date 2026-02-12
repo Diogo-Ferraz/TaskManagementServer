@@ -1,23 +1,21 @@
-﻿using AutoMapper;
+using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Projects.Models.DTOs;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
-using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.Projects.Queries.Handlers
 {
-    public class GetProjectQueryHandler : IRequestHandler<GetProjectQuery, ProjectDto>
+    public class GetProjectsQueryHandler : IRequestHandler<GetProjectsQuery, IReadOnlyList<ProjectDto>>
     {
         private readonly TaskManagementDbContext _dbContext;
         private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
 
-        public GetProjectQueryHandler(
+        public GetProjectsQueryHandler(
             TaskManagementDbContext dbContext,
             ICurrentUserService currentUserService,
             IMapper mapper)
@@ -27,7 +25,7 @@ namespace TaskManagement.Api.Features.Projects.Queries.Handlers
             _mapper = mapper;
         }
 
-        public async Task<ProjectDto> Handle(GetProjectQuery request, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<ProjectDto>> Handle(GetProjectsQuery request, CancellationToken cancellationToken)
         {
             var currentUserId = _currentUserService.Id;
             if (string.IsNullOrEmpty(currentUserId))
@@ -36,24 +34,16 @@ namespace TaskManagement.Api.Features.Projects.Queries.Handlers
             }
 
             var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
-            var isProjectManager = _currentUserService.IsInRole(Roles.ProjectManager);
-
-            var query = _dbContext.Projects.Where(p => p.Id == request.Id);
-            if (!isAdmin && !isProjectManager)
+            var query = _dbContext.Projects.AsQueryable();
+            if (!isAdmin)
             {
                 query = query.Where(p => p.OwnerUserId == currentUserId || p.Members.Any(m => m.UserId == currentUserId));
             }
 
-            var projectDto = await query
+            return await query
+                .OrderBy(p => p.Name)
                 .ProjectTo<ProjectDto>(_mapper.ConfigurationProvider)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (projectDto == null)
-            {
-                throw new NotFoundException(nameof(Project), request.Id);
-            }
-
-            return projectDto;
+                .ToListAsync(cancellationToken);
         }
     }
 }

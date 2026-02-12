@@ -7,6 +7,7 @@ using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
 {
@@ -99,6 +100,38 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
             (await _dbContext.Projects.CountAsync()).Should().Be(initialCount);
             var project = await _dbContext.Projects.FindAsync(_projectIdToDelete);
             project.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task Handle_ShouldRemoveProject_WhenUserIsProjectManager()
+        {
+            // Arrange
+            var command = new DeleteProjectCommand { Id = _projectIdToDelete };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_otherUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.ProjectManager)).Returns(true);
+
+            // Act
+            await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            var deletedProject = await _dbContext.Projects.FindAsync(_projectIdToDelete);
+            deletedProject.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task Handle_ShouldRemoveProject_WhenUserIsAdministrator()
+        {
+            // Arrange
+            var command = new DeleteProjectCommand { Id = _projectIdToDelete };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_otherUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+
+            // Act
+            await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            var deletedProject = await _dbContext.Projects.FindAsync(_projectIdToDelete);
+            deletedProject.Should().BeNull();
         }
 
         [Fact]

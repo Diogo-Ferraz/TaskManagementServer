@@ -13,6 +13,7 @@ using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
 using TaskStatus = TaskManagement.Api.Features.TaskItems.Models.TaskStatus;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
 {
@@ -136,6 +137,23 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
             createdTask.Should().NotBeNull();
             createdTask!.CreatedByUserId.Should().Be(_projectMemberId);
             _mockCurrentUser.Verify(u => u.Id, Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task Handle_ShouldCreateTaskItem_WhenUserIsAdministrator()
+        {
+            // Arrange
+            var command = new CreateTaskItemCommand { ProjectId = _existingProjectId, Title = "New Task by Admin", Status = TaskStatus.Todo };
+            _mockCurrentUser.Setup(u => u.Id).Returns(_unrelatedUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+
+            // Act
+            var resultDto = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            resultDto.Should().NotBeNull();
+            resultDto.Title.Should().Be(command.Title);
+            resultDto.CreatedByUserId.Should().Be(_unrelatedUserId);
         }
 
 

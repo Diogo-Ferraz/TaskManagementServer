@@ -217,17 +217,17 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         }
 
         [Fact]
-        public async Task UpdateTaskItem_WhenUserIsProjectMemberButNotAssigneeOrOwner_ShouldReturnForbidden()
+        public async Task UpdateTaskItem_WhenUserIsProjectMemberButNotAssigneeOrOwner_ShouldReturnOk()
         {
             // Arrange
             SetAuthenticatedUser(_projectMemberNotAssigneeId);
-            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Forbidden Update Attempt" };
+            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Member Update Attempt" };
 
             // Act
             var response = await _client.PutAsJsonAsync($"/api/taskitems/{_taskIdToUpdate}", command);
 
             // Assert Response
-            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
         }
 
         [Fact]

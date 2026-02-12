@@ -6,6 +6,7 @@ using TaskManagement.Api.Features.TaskItems.Commands;
 using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 using TaskManagement.Api.Features.TaskItems.Queries;
 using TaskManagement.Shared.Models;
+using TaskStatus = TaskManagement.Api.Features.TaskItems.Models.TaskStatus;
 
 namespace TaskManagement.Api.Features.TaskItems.Controllers
 {
@@ -65,6 +66,45 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
             _logger.LogInformation("Retrieving task item with ID: {TaskItemId}", id);
             var taskItemDto = await _mediator.Send(new GetTaskItemQuery { Id = id });
             return Ok(taskItemDto);
+        }
+
+        /// <summary>
+        /// Retrieves task items using optional filters.
+        /// </summary>
+        /// <param name="projectId">Optional project ID filter.</param>
+        /// <param name="assignedUserId">Optional assigned user ID filter.</param>
+        /// <param name="status">Optional status filter.</param>
+        /// <param name="unassignedOnly">Optional filter for unassigned tasks only.</param>
+        /// <param name="limit">Maximum number of tasks to return.</param>
+        /// <returns>A filtered list of task items.</returns>
+        [HttpGet]
+        [ProducesResponseType(typeof(IReadOnlyList<TaskItemDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetTasks(
+            [FromQuery] Guid? projectId,
+            [FromQuery] string? assignedUserId,
+            [FromQuery] TaskStatus? status,
+            [FromQuery] bool? unassignedOnly,
+            [FromQuery] int limit = 100)
+        {
+            _logger.LogInformation(
+                "Retrieving tasks with filters. ProjectId: {ProjectId}, AssignedUserId: {AssignedUserId}, Status: {Status}, UnassignedOnly: {UnassignedOnly}, Limit: {Limit}",
+                projectId,
+                assignedUserId,
+                status,
+                unassignedOnly,
+                limit);
+
+            var taskDtos = await _mediator.Send(new GetTasksQuery
+            {
+                ProjectId = projectId,
+                AssignedUserId = assignedUserId,
+                Status = status,
+                UnassignedOnly = unassignedOnly,
+                Limit = limit
+            });
+
+            return Ok(taskDtos);
         }
 
         /// <summary>

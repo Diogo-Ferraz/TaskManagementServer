@@ -27,6 +27,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         private readonly Guid _task2InProject1Id = Guid.NewGuid();
         private readonly Guid _nonExistentTaskId = Guid.NewGuid();
         private readonly Guid _projectWithoutAccessId = Guid.NewGuid();
+        private readonly Guid _emptyProjectId = Guid.NewGuid();
 
 
         public GetTaskItemEndpointTests(ApiWebApplicationFactory<Program> factory)
@@ -76,6 +77,16 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     LastModifiedAt = DateTime.UtcNow,
                     LastModifiedByUserId = _project2OwnerId
                 };
+                var project3 = new Project
+                {
+                    Id = _emptyProjectId,
+                    Name = "Project With No Tasks",
+                    OwnerUserId = _project2OwnerId,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedByUserId = _project2OwnerId,
+                    LastModifiedAt = DateTime.UtcNow,
+                    LastModifiedByUserId = _project2OwnerId
+                };
 
 
                 var task1 = new TaskItem
@@ -104,21 +115,36 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     LastModifiedAt = DateTime.UtcNow.AddMinutes(1),
                     LastModifiedByUserId = _projectMemberId
                 };
+                var task3 = new TaskItem
+                {
+                    Id = Guid.NewGuid(),
+                    Title = "Task Three Project Two",
+                    ProjectId = _projectWithoutAccessId,
+                    Project = project2,
+                    Status = TaskStatus.Done,
+                    AssignedUserId = _project2OwnerId,
+                    CreatedByUserId = _project2OwnerId,
+                    CreatedAt = DateTime.UtcNow,
+                    LastModifiedAt = DateTime.UtcNow,
+                    LastModifiedByUserId = _project2OwnerId
+                };
 
-                db.Projects.AddRange(project1, project2);
-                db.TaskItems.AddRange(task1, task2);
+                db.Projects.AddRange(project1, project2, project3);
+                db.TaskItems.AddRange(task1, task2, task3);
                 return Task.CompletedTask;
             });
         }
 
         public Task DisposeAsync() => Task.CompletedTask;
 
-        private void SetAuthenticatedUser(string userId)
+        private void SetAuthenticatedUser(string userId, string? roles = null)
         {
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserIdHeader);
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
-            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.User);
+            _client.DefaultRequestHeaders.Add(
+                TestAuthenticationHandler.TestUserRolesHeader,
+                string.IsNullOrWhiteSpace(roles) ? Roles.User : roles);
         }
 
         [Fact]
@@ -143,6 +169,22 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         {
             // Arrange
             SetAuthenticatedUser(_projectMemberId);
+
+            // Act
+            var response = await _client.GetAsync($"/api/taskitems/{_task1InProject1Id}");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var taskDto = await response.Content.ReadFromJsonAsync<TaskItemDto>();
+            taskDto.Should().NotBeNull();
+            taskDto!.Id.Should().Be(_task1InProject1Id);
+        }
+
+        [Fact]
+        public async Task GetTaskById_WhenUserIsAdministrator_ShouldReturnTaskDto()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.Administrator);
 
             // Act
             var response = await _client.GetAsync($"/api/taskitems/{_task1InProject1Id}");
@@ -241,6 +283,36 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         }
 
         [Fact]
+        public async Task GetTasks_WithFilters_WhenUserIsAdministrator_ShouldReturnCrossProjectResults()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.Administrator);
+
+            // Act
+            var response = await _client.GetAsync($"/api/taskitems?projectId={_projectWithoutAccessId}&status=Done");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var tasks = await response.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+            tasks.Should().NotBeNull();
+            tasks.Should().HaveCount(1);
+            tasks!.All(t => t.ProjectId == _projectWithoutAccessId).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetTasks_WithProjectFilter_WhenUserHasNoAccess_ShouldReturnForbidden()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.User);
+
+            // Act
+            var response = await _client.GetAsync($"/api/taskitems?projectId={_project1Id}");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
         public async Task GetTasksForProject_WhenProjectDoesNotExist_ShouldReturnForbiddenOrNotFound()
         {
             // Arrange
@@ -260,7 +332,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             SetAuthenticatedUser(_project2OwnerId);
 
             // Act
-            var response = await _client.GetAsync($"/api/taskitems/project/{_projectWithoutAccessId}");
+            var response = await _client.GetAsync($"/api/taskitems/project/{_emptyProjectId}");
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.OK);

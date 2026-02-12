@@ -6,6 +6,7 @@ using TaskManagement.Api.Features.TaskItems.Models.DTOs;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
 using TaskManagement.Api.Infrastructure.Common.Exceptions;
 using TaskManagement.Api.Infrastructure.Persistence;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
 {
@@ -33,9 +34,14 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
                 throw new UnauthorizedAccessException("User not authenticated.");
             }
 
-            var taskItemDto = await _dbContext.TaskItems
-                .Where(t => t.Id == request.Id)
-                .Where(t => t.Project.OwnerUserId == currentUserId || t.Project.Members.Any(m => m.UserId == currentUserId))
+            var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
+            var query = _dbContext.TaskItems.Where(t => t.Id == request.Id);
+            if (!isAdmin)
+            {
+                query = query.Where(t => t.Project.OwnerUserId == currentUserId || t.Project.Members.Any(m => m.UserId == currentUserId));
+            }
+
+            var taskItemDto = await query
                 .ProjectTo<TaskItemDto>(_mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(cancellationToken);
 
