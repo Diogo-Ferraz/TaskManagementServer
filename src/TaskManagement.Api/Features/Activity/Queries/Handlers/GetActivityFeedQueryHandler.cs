@@ -1,6 +1,7 @@
 using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using TaskManagement.Api.Features.Activity.Models;
 using TaskManagement.Api.Features.Activity.Models.DTOs;
 using TaskManagement.Api.Features.Projects.Services.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
@@ -56,7 +57,18 @@ namespace TaskManagement.Api.Features.Activity.Queries.Handlers
                     var isMember = await _projectMembershipService.IsMemberAsync(request.ProjectId.Value, currentUserId, cancellationToken);
                     if (!isMember)
                     {
-                        throw new ForbiddenAccessException("User is not authorized to view activity for this project.");
+                        // Project may be deleted; allow actor to still read their own delete event history.
+                        var canAccessDeletedProjectActivity = await _dbContext.ActivityLogs
+                            .AsNoTracking()
+                            .AnyAsync(
+                                a => a.ProjectId == request.ProjectId.Value
+                                    && a.Type == ActivityType.ProjectDeleted
+                                    && a.CreatedByUserId == currentUserId,
+                                cancellationToken);
+                        if (!canAccessDeletedProjectActivity)
+                        {
+                            throw new ForbiddenAccessException("User is not authorized to view activity for this project.");
+                        }
                     }
                 }
 
@@ -72,12 +84,9 @@ namespace TaskManagement.Api.Features.Activity.Queries.Handlers
                 else
                 {
                     var projectIds = await _projectMembershipService.GetProjectIdsForUserAsync(currentUserId, cancellationToken);
-                    if (projectIds.Count == 0)
-                    {
-                        return Array.Empty<ActivityLogDto>();
-                    }
-
-                    query = query.Where(activity => activity.ProjectId != null && projectIds.Contains(activity.ProjectId.Value));
+                    query = query.Where(activity =>
+                        (activity.ProjectId != null && projectIds.Contains(activity.ProjectId.Value))
+                        || (activity.Type == ActivityType.ProjectDeleted && activity.CreatedByUserId == currentUserId));
                 }
             }
 

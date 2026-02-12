@@ -1,5 +1,6 @@
 ﻿using Microsoft.OpenApi.Models;
 using TaskManagement.Api.Infrastructure.Common.Settings;
+using TaskManagement.Api.Infrastructure.Common.Serialization;
 
 namespace TaskManagement.Api.Infrastructure.Common.Configuration
 {
@@ -9,6 +10,8 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
         {
             services.AddSwaggerGen(options =>
             {
+                options.SchemaFilter<OptionalSchemaFilter>();
+
                 var clientSettings = builder.Configuration.GetSection("ClientSettings").Get<ClientSettings>();
                 if (clientSettings == null)
                 {

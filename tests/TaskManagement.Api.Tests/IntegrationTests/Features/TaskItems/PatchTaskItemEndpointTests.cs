@@ -102,9 +102,30 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             var task = await db.TaskItems.FindAsync(_taskId);
             task.Should().NotBeNull();
             task!.AssignedUserId.Should().BeNull();
-            var activityExists = await db.ActivityLogs
-                .AnyAsync(a => a.TaskItemId == _taskId && a.Type == ActivityType.TaskAssigneeChanged);
-            activityExists.Should().BeTrue();
+            var activity = await db.ActivityLogs
+                .FirstOrDefaultAsync(a => a.TaskItemId == _taskId && a.Type == ActivityType.TaskAssigneeChanged);
+            activity.Should().NotBeNull();
+            activity!.OldValue.Should().Be(_memberUserId);
+            activity.NewValue.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task PatchTaskItem_SetDueDate_ShouldCreateDueDateChangedActivityWithValues()
+        {
+            SetAuthenticatedUser(_ownerUserId);
+            var dueDate = DateTime.UtcNow.AddDays(7);
+            var command = new PatchTaskItemCommand { DueDate = dueDate };
+
+            var response = await _client.PatchAsJsonAsync($"/api/taskitems/{_taskId}", command);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
+            var activity = await db.ActivityLogs
+                .FirstOrDefaultAsync(a => a.TaskItemId == _taskId && a.Type == ActivityType.TaskDueDateChanged);
+            activity.Should().NotBeNull();
+            activity!.OldValue.Should().BeNull();
+            activity.NewValue.Should().NotBeNull();
         }
 
         [Fact]

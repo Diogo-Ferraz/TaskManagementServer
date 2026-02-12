@@ -64,7 +64,9 @@ namespace TaskManagement.Api.Features.Projects.Commands.Handlers
                 {
                     Type = ActivityType.ProjectRenamed,
                     ProjectId = project.Id,
-                    ProjectName = project.Name
+                    ProjectName = project.Name,
+                    OldValue = previousName,
+                    NewValue = project.Name
                 };
                 _dbContext.ActivityLogs.Add(activityLog);
             }

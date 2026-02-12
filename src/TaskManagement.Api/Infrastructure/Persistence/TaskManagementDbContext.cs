@@ -64,6 +64,8 @@ namespace TaskManagement.Api.Infrastructure.Persistence
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.ProjectName).HasMaxLength(200);
                 entity.Property(e => e.TaskTitle).HasMaxLength(200);
+                entity.Property(e => e.OldValue).HasMaxLength(500);
+                entity.Property(e => e.NewValue).HasMaxLength(500);
                 entity.Property(e => e.CreatedByUserId).IsRequired();
                 entity.Property(e => e.CreatedByUserName).HasMaxLength(200);
 

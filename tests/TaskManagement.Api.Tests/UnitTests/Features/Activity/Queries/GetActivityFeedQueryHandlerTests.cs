@@ -203,6 +203,36 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Activity.Queries
             result.Select(x => x.ProjectId).Should().ContainInOrder(_projectCId, _projectBId);
         }
 
+        [Fact]
+        public async Task Handle_ShouldReturnOwnProjectDeletedActivity_WhenUserHasNoCurrentMemberships()
+        {
+            // Arrange
+            var deletedProjectId = Guid.NewGuid();
+            _mockCurrentUser.Setup(u => u.Id).Returns(_userId);
+            _dbContext.ActivityLogs.Add(new ActivityLog
+            {
+                Id = Guid.NewGuid(),
+                ProjectId = deletedProjectId,
+                ProjectName = "Deleted Project",
+                Type = ActivityType.ProjectDeleted,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = _userId,
+                CreatedByUserName = "Actor User"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(false);
+            _mockProjectMembershipService
+                .Setup(s => s.GetProjectIdsForUserAsync(_userId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<Guid>());
+
+            // Act
+            var result = await _handler.Handle(new GetActivityFeedQuery(), CancellationToken.None);
+
+            // Assert
+            result.Should().Contain(a => a.ProjectId == deletedProjectId && a.Type == ActivityType.ProjectDeleted);
+        }
+
         public void Dispose()
         {
             _dbContext.Dispose();

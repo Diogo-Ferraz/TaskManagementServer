@@ -63,9 +63,11 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
 
             using var scope = _factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
-            var renameActivityExists = await db.ActivityLogs
-                .AnyAsync(a => a.ProjectId == _projectId && a.Type == ActivityType.ProjectRenamed);
-            renameActivityExists.Should().BeTrue();
+            var renameActivity = await db.ActivityLogs
+                .FirstOrDefaultAsync(a => a.ProjectId == _projectId && a.Type == ActivityType.ProjectRenamed);
+            renameActivity.Should().NotBeNull();
+            renameActivity!.OldValue.Should().Be("Initial Name");
+            renameActivity.NewValue.Should().Be("Patched Name");
         }
 
         [Fact]

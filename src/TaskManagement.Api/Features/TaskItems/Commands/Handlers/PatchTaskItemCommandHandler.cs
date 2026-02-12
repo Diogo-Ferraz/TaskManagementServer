@@ -117,7 +117,9 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                     ProjectId = taskItem.ProjectId,
                     TaskItemId = taskItem.Id,
                     ProjectName = taskItem.Project.Name,
-                    TaskTitle = taskItem.Title
+                    TaskTitle = taskItem.Title,
+                    OldValue = previousTitle,
+                    NewValue = taskItem.Title
                 });
             }
 
@@ -129,7 +131,9 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                     ProjectId = taskItem.ProjectId,
                     TaskItemId = taskItem.Id,
                     ProjectName = taskItem.Project.Name,
-                    TaskTitle = taskItem.Title
+                    TaskTitle = taskItem.Title,
+                    OldValue = previousAssignedUserId,
+                    NewValue = taskItem.AssignedUserId
                 });
             }
 
@@ -141,7 +145,9 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                     ProjectId = taskItem.ProjectId,
                     TaskItemId = taskItem.Id,
                     ProjectName = taskItem.Project.Name,
-                    TaskTitle = taskItem.Title
+                    TaskTitle = taskItem.Title,
+                    OldValue = previousDueDate?.ToString("O"),
+                    NewValue = taskItem.DueDate?.ToString("O")
                 });
             }
 

@@ -11,6 +11,8 @@ namespace TaskManagement.Api.Features.Activity.Models.DTOs
         public Guid? TaskItemId { get; set; }
         public string? ProjectName { get; set; }
         public string? TaskTitle { get; set; }
+        public string? OldValue { get; set; }
+        public string? NewValue { get; set; }
         public TaskStatus? OldStatus { get; set; }
         public TaskStatus? NewStatus { get; set; }
         public string ActorUserId { get; set; } = string.Empty;
