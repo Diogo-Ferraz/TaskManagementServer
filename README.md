@@ -15,8 +15,8 @@ Designed for local full-stack development with Docker + Caddy and structured to 
 ```mermaid
 flowchart LR
     SPA["SPA Client (future)"] -->|"HTTPS"| Caddy["Caddy Reverse Proxy"]
-    Caddy -->|"HTTPS"| Auth["Auth Service\nOpenIddict + Identity"]
-    Caddy -->|"HTTPS"| Api["API Service\nProjects + TaskItems + Activity"]
+    Caddy -->|"HTTPS"| Auth["Auth Service<br/>OpenIddict + Identity"]
+    Caddy -->|"HTTPS"| Api["API Service<br/>Projects + TaskItems + Activity"]
     Auth --> Db[("SQL Server")]
     Api --> Db
 ```
