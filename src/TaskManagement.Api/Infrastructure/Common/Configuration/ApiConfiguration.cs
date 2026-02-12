@@ -64,7 +64,10 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
-            app.MapHub<ActivityHub>("/hubs/activity");
+            app.MapHub<ActivityHub>("/hubs/activity", options =>
+            {
+                options.CloseOnAuthenticationExpiration = true;
+            });
 
             return app;
         }

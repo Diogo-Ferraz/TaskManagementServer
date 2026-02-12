@@ -38,12 +38,25 @@ flowchart LR
 ### Task Management
 - Create, update, delete, and read task items.
 - Assignment support and project membership auto-add for newly assigned users.
-- Filtered task queries for project, assignee, status, unassigned, and limit.
+- Filtered task queries for project, assignee, updater, status, unassigned, text search, date range, and pagination.
 
 ### Activity and Notifications
 - Activity log for key events (project created, task created, task status changed).
 - Activity feed endpoint for dashboard consumption.
 - SignalR hub for real-time updates (`/hubs/activity`) with project and admin group subscriptions.
+
+### SPA Real-Time Lifecycle (SignalR)
+- Authentication for hub requests supports bearer tokens in `Authorization` header or `access_token` query string (WebSocket-friendly).
+- Connections are closed on token expiration (`CloseOnAuthenticationExpiration = true`) so clients can reconnect with a fresh token.
+- On each connection, the server auto-subscribes:
+  - `Administrator` to global admin activity group.
+  - Non-admin users to all projects they can access.
+- Optional hub methods for explicit subscriptions:
+  - `JoinProject(projectId)`
+  - `JoinProjects(projectIds)`
+  - `JoinAllProjects()`
+  - `ResubscribeToScope()`
+  - `LeaveProject(projectId)`
 
 ---
 
