@@ -40,7 +40,7 @@ namespace TaskManagement.Api.Features.Dashboard.Queries.Handlers
                     .Select(p => p.Id);
             }
 
-            var projectsCountTask = visibleProjectIdsQuery.CountAsync(cancellationToken);
+            var projectsCount = await visibleProjectIdsQuery.CountAsync(cancellationToken);
 
             var assignedTasksQuery = _dbContext.TaskItems
                 .Where(t => t.AssignedUserId == currentUserId);
@@ -51,26 +51,20 @@ namespace TaskManagement.Api.Features.Dashboard.Queries.Handlers
                     .Where(t => t.Project.OwnerUserId == currentUserId || t.Project.Members.Any(m => m.UserId == currentUserId));
             }
 
-            var assignedTasksCountTask = assignedTasksQuery.CountAsync(cancellationToken);
-            var tasksClosedThisWeekCountTask = assignedTasksQuery
+            var assignedTasksCount = await assignedTasksQuery.CountAsync(cancellationToken);
+            var tasksClosedThisWeekCount = await assignedTasksQuery
                 .Where(t => t.Status == Features.TaskItems.Models.TaskStatus.Done && t.LastModifiedAt >= weekStart)
                 .CountAsync(cancellationToken);
-            var overdueAssignedTasksCountTask = assignedTasksQuery
+            var overdueAssignedTasksCount = await assignedTasksQuery
                 .Where(t => t.Status != Features.TaskItems.Models.TaskStatus.Done && t.DueDate.HasValue && t.DueDate.Value < now)
                 .CountAsync(cancellationToken);
 
-            await Task.WhenAll(
-                projectsCountTask,
-                assignedTasksCountTask,
-                tasksClosedThisWeekCountTask,
-                overdueAssignedTasksCountTask);
-
             return new DashboardSummaryDto
             {
-                ProjectsCount = projectsCountTask.Result,
-                AssignedTasksCount = assignedTasksCountTask.Result,
-                TasksClosedThisWeekCount = tasksClosedThisWeekCountTask.Result,
-                OverdueAssignedTasksCount = overdueAssignedTasksCountTask.Result
+                ProjectsCount = projectsCount,
+                AssignedTasksCount = assignedTasksCount,
+                TasksClosedThisWeekCount = tasksClosedThisWeekCount,
+                OverdueAssignedTasksCount = overdueAssignedTasksCount
             };
         }
 

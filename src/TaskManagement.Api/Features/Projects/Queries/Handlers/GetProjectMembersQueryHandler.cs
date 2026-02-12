@@ -60,15 +60,16 @@ namespace TaskManagement.Api.Features.Projects.Queries.Handlers
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             members.Add(project.OwnerUserId);
 
-            var displayNameTasks = members.ToDictionary(
-                userId => userId,
-                userId => _userDirectoryService.GetDisplayNameAsync(userId, cancellationToken),
-                StringComparer.OrdinalIgnoreCase);
+            var displayNameEntries = await Task.WhenAll(
+                members.Select(async userId => new
+                {
+                    UserId = userId,
+                    DisplayName = await _userDirectoryService.GetDisplayNameAsync(userId, cancellationToken)
+                }));
 
-            await Task.WhenAll(displayNameTasks.Values);
-            var displayNames = displayNameTasks.ToDictionary(
-                pair => pair.Key,
-                pair => pair.Value.GetAwaiter().GetResult(),
+            var displayNames = displayNameEntries.ToDictionary(
+                entry => entry.UserId,
+                entry => entry.DisplayName,
                 StringComparer.OrdinalIgnoreCase);
 
             var result = members
