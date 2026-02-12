@@ -216,5 +216,29 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
             projects.Should().HaveCount(2);
             projects.Should().NotContain(p => p.Id == _projectUnrelatedId);
         }
+
+        [Fact]
+        public async Task GetProjects_WithPagination_ShouldReturnRequestedPage()
+        {
+            // Arrange
+            SetAuthenticatedUser(_user1Id, Roles.Administrator);
+
+            // Act
+            var firstPageResponse = await _client.GetAsync("/api/projects?page=1&pageSize=1");
+            var secondPageResponse = await _client.GetAsync("/api/projects?page=2&pageSize=1");
+
+            // Assert
+            firstPageResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            secondPageResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<List<ProjectDto>>();
+            var secondPage = await secondPageResponse.Content.ReadFromJsonAsync<List<ProjectDto>>();
+
+            firstPage.Should().NotBeNull();
+            secondPage.Should().NotBeNull();
+            firstPage.Should().HaveCount(1);
+            secondPage.Should().HaveCount(1);
+            secondPage![0].Id.Should().NotBe(firstPage![0].Id);
+        }
     }
 }

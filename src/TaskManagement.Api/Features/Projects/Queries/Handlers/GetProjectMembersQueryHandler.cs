@@ -14,15 +14,18 @@ namespace TaskManagement.Api.Features.Projects.Queries.Handlers
         private readonly TaskManagementDbContext _dbContext;
         private readonly ICurrentUserService _currentUserService;
         private readonly IProjectMembershipService _projectMembershipService;
+        private readonly IUserDirectoryService _userDirectoryService;
 
         public GetProjectMembersQueryHandler(
             TaskManagementDbContext dbContext,
             ICurrentUserService currentUserService,
-            IProjectMembershipService projectMembershipService)
+            IProjectMembershipService projectMembershipService,
+            IUserDirectoryService userDirectoryService)
         {
             _dbContext = dbContext;
             _currentUserService = currentUserService;
             _projectMembershipService = projectMembershipService;
+            _userDirectoryService = userDirectoryService;
         }
 
         public async Task<IReadOnlyList<ProjectMemberDto>> Handle(GetProjectMembersQuery request, CancellationToken cancellationToken)
@@ -57,14 +60,27 @@ namespace TaskManagement.Api.Features.Projects.Queries.Handlers
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             members.Add(project.OwnerUserId);
 
+            var displayNameEntries = await Task.WhenAll(
+                members.Select(async userId => new
+                {
+                    UserId = userId,
+                    DisplayName = await _userDirectoryService.GetDisplayNameAsync(userId, cancellationToken)
+                }));
+
+            var displayNames = displayNameEntries.ToDictionary(
+                entry => entry.UserId,
+                entry => entry.DisplayName,
+                StringComparer.OrdinalIgnoreCase);
+
             var result = members
                 .Select(userId => new ProjectMemberDto
                 {
                     UserId = userId,
+                    DisplayName = displayNames[userId] ?? userId,
                     IsOwner = string.Equals(userId, project.OwnerUserId, StringComparison.OrdinalIgnoreCase)
                 })
                 .OrderByDescending(member => member.IsOwner)
-                .ThenBy(member => member.UserId)
+                .ThenBy(member => member.DisplayName)
                 .ToList();
 
             return result;

@@ -12,7 +12,7 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
 {
     public class GetTasksQueryHandler : IRequestHandler<GetTasksQuery, IReadOnlyList<TaskItemDto>>
     {
-        private const int MaxLimit = 500;
+        private const int MaxPageSize = 500;
         private readonly TaskManagementDbContext _dbContext;
         private readonly ICurrentUserService _currentUserService;
         private readonly IMapper _mapper;
@@ -67,6 +67,30 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
                 query = query.Where(t => t.AssignedUserId == assignedUserId);
             }
 
+            if (!string.IsNullOrWhiteSpace(request.UpdatedByUserId))
+            {
+                var updatedByUserId = request.UpdatedByUserId.Trim();
+                query = query.Where(t => t.LastModifiedByUserId == updatedByUserId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                var search = request.Search.Trim();
+                query = query.Where(t =>
+                    t.Title.Contains(search) ||
+                    ((t.Description ?? string.Empty).Contains(search)));
+            }
+
+            if (request.LastModifiedFrom.HasValue)
+            {
+                query = query.Where(t => t.LastModifiedAt >= request.LastModifiedFrom.Value);
+            }
+
+            if (request.LastModifiedTo.HasValue)
+            {
+                query = query.Where(t => t.LastModifiedAt <= request.LastModifiedTo.Value);
+            }
+
             if (request.Status.HasValue)
             {
                 query = query.Where(t => t.Status == request.Status.Value);
@@ -77,11 +101,21 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
                 query = query.Where(t => t.AssignedUserId == null);
             }
 
-            var limit = request.Limit <= 0 ? 100 : Math.Min(request.Limit, MaxLimit);
+            var page = request.Page <= 0 ? 1 : request.Page;
+            var pageSize = request.PageSize <= 0 ? 50 : Math.Min(request.PageSize, MaxPageSize);
+            if (request.Limit.HasValue && request.Limit.Value > 0)
+            {
+                page = 1;
+                pageSize = Math.Min(request.Limit.Value, MaxPageSize);
+            }
+
+            var skip = (page - 1) * pageSize;
+
             return await query
                 .OrderByDescending(t => t.LastModifiedAt)
                 .ThenBy(t => t.Title)
-                .Take(limit)
+                .Skip(skip)
+                .Take(pageSize)
                 .ProjectTo<TaskItemDto>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
         }

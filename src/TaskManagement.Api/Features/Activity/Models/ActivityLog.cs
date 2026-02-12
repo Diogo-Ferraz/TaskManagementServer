@@ -18,7 +18,13 @@ namespace TaskManagement.Api.Features.Activity.Models
     public enum ActivityType
     {
         ProjectCreated,
+        ProjectRenamed,
+        ProjectDeleted,
         TaskCreated,
-        TaskStatusChanged
+        TaskStatusChanged,
+        TaskRenamed,
+        TaskDeleted,
+        TaskAssigneeChanged,
+        TaskDueDateChanged
     }
 }

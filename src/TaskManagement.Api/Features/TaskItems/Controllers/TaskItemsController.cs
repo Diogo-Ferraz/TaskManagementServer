@@ -73,9 +73,15 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         /// </summary>
         /// <param name="projectId">Optional project ID filter.</param>
         /// <param name="assignedUserId">Optional assigned user ID filter.</param>
+        /// <param name="updatedByUserId">Optional last-modified-by user ID filter.</param>
+        /// <param name="search">Optional text search in task title/description.</param>
+        /// <param name="lastModifiedFrom">Optional inclusive lower bound for last modified timestamp (UTC recommended).</param>
+        /// <param name="lastModifiedTo">Optional inclusive upper bound for last modified timestamp (UTC recommended).</param>
         /// <param name="status">Optional status filter.</param>
         /// <param name="unassignedOnly">Optional filter for unassigned tasks only.</param>
-        /// <param name="limit">Maximum number of tasks to return.</param>
+        /// <param name="limit">Legacy maximum number of tasks to return (uses first page).</param>
+        /// <param name="page">1-based page number.</param>
+        /// <param name="pageSize">Number of items per page (max 500).</param>
         /// <returns>A filtered list of task items.</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IReadOnlyList<TaskItemDto>), StatusCodes.Status200OK)]
@@ -83,25 +89,43 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         public async Task<IActionResult> GetTasks(
             [FromQuery] Guid? projectId,
             [FromQuery] string? assignedUserId,
+            [FromQuery] string? updatedByUserId,
+            [FromQuery] string? search,
+            [FromQuery] DateTime? lastModifiedFrom,
+            [FromQuery] DateTime? lastModifiedTo,
             [FromQuery] TaskStatus? status,
             [FromQuery] bool? unassignedOnly,
-            [FromQuery] int limit = 100)
+            [FromQuery] int? limit,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50)
         {
             _logger.LogInformation(
-                "Retrieving tasks with filters. ProjectId: {ProjectId}, AssignedUserId: {AssignedUserId}, Status: {Status}, UnassignedOnly: {UnassignedOnly}, Limit: {Limit}",
+                "Retrieving tasks with filters. ProjectId: {ProjectId}, AssignedUserId: {AssignedUserId}, UpdatedByUserId: {UpdatedByUserId}, Search: {Search}, LastModifiedFrom: {LastModifiedFrom}, LastModifiedTo: {LastModifiedTo}, Status: {Status}, UnassignedOnly: {UnassignedOnly}, Limit: {Limit}, Page: {Page}, PageSize: {PageSize}",
                 projectId,
                 assignedUserId,
+                updatedByUserId,
+                search,
+                lastModifiedFrom,
+                lastModifiedTo,
                 status,
                 unassignedOnly,
-                limit);
+                limit,
+                page,
+                pageSize);
 
             var taskDtos = await _mediator.Send(new GetTasksQuery
             {
                 ProjectId = projectId,
                 AssignedUserId = assignedUserId,
+                UpdatedByUserId = updatedByUserId,
+                Search = search,
+                LastModifiedFrom = lastModifiedFrom,
+                LastModifiedTo = lastModifiedTo,
                 Status = status,
                 UnassignedOnly = unassignedOnly,
-                Limit = limit
+                Limit = limit,
+                Page = page,
+                PageSize = pageSize
             });
 
             return Ok(taskDtos);
@@ -138,6 +162,26 @@ namespace TaskManagement.Api.Features.TaskItems.Controllers
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskItemCommand command)
         {
             _logger.LogInformation("Attempting to update task item with ID: {TaskItemId}", id);
+            command.Id = id;
+            var updatedTaskDto = await _mediator.Send(command);
+            return Ok(updatedTaskDto);
+        }
+
+        /// <summary>
+        /// Partially updates an existing task item.
+        /// </summary>
+        /// <param name="id">The ID of the task item to patch.</param>
+        /// <param name="command">The command containing partial task updates. Omitted fields are unchanged; explicit null clears nullable fields such as due date, description, and assignee.</param>
+        /// <returns>The patched task item.</returns>
+        [HttpPatch("{id:guid}")]
+        [Authorize(Policy = Policies.CanManageTasks)]
+        [ProducesResponseType(typeof(TaskItemDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Patch(Guid id, [FromBody] PatchTaskItemCommand command)
+        {
+            _logger.LogInformation("Attempting to patch task item with ID: {TaskItemId}", id);
             command.Id = id;
             var updatedTaskDto = await _mediator.Send(command);
             return Ok(updatedTaskDto);

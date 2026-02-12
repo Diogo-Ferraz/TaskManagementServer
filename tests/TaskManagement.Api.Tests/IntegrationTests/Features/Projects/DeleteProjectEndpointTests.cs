@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
+using TaskManagement.Api.Features.Activity.Models;
 using TaskManagement.Api.Features.Projects.Models;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Tests.IntegrationTests.Fixtures;
@@ -99,6 +100,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Projects
                 var projectInDb = await dbContext.Projects.FindAsync(_projectToDeleteId);
                 projectInDb.Should().BeNull();
                 (await dbContext.Projects.CountAsync()).Should().Be(initialProjectCount - 1);
+                var activityExists = await dbContext.ActivityLogs
+                    .AnyAsync(a => a.ProjectId == _projectToDeleteId && a.Type == ActivityType.ProjectDeleted);
+                activityExists.Should().BeTrue();
             }
         }
 

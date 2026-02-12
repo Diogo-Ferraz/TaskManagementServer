@@ -23,10 +23,7 @@ namespace TaskManagement.Api.Features.Activity.Hubs
 
         public override async Task OnConnectedAsync()
         {
-            if (_currentUserService.IsInRole(Roles.Administrator))
-            {
-                await Groups.AddToGroupAsync(Context.ConnectionId, GetAdminGroupName());
-            }
+            await AddUserScopeGroupsAsync();
 
             await base.OnConnectedAsync();
         }
@@ -87,6 +84,16 @@ namespace TaskManagement.Api.Features.Activity.Hubs
         }
 
         public async Task JoinAllProjects()
+        {
+            await AddUserScopeGroupsAsync();
+        }
+
+        public async Task ResubscribeToScope()
+        {
+            await AddUserScopeGroupsAsync();
+        }
+
+        private async Task AddUserScopeGroupsAsync()
         {
             var userId = _currentUserService.Id;
             if (string.IsNullOrWhiteSpace(userId))

@@ -32,18 +32,45 @@ flowchart LR
 
 ### Project Management
 - Create, update, delete, and read projects.
+- Partial updates via `PATCH /api/projects/{id}`.
 - Project membership tracking (`ProjectMember`) with audit fields.
-- Project members listing endpoint.
+- Project members listing endpoint with display names.
 
 ### Task Management
 - Create, update, delete, and read task items.
+- Partial updates via `PATCH /api/taskitems/{id}`.
 - Assignment support and project membership auto-add for newly assigned users.
-- Filtered task queries for project, assignee, status, unassigned, and limit.
+- Filtered task queries for project, assignee, updater, status, unassigned, text search, date range, and pagination.
 
 ### Activity and Notifications
-- Activity log for key events (project created, task created, task status changed).
-- Activity feed endpoint for dashboard consumption.
+- Activity log for key events:
+  - `ProjectCreated`
+  - `ProjectRenamed`
+  - `ProjectDeleted`
+  - `TaskCreated`
+  - `TaskStatusChanged`
+  - `TaskRenamed`
+  - `TaskDeleted`
+  - `TaskAssigneeChanged`
+  - `TaskDueDateChanged`
+- Activity feed endpoint for dashboard consumption with pagination.
 - SignalR hub for real-time updates (`/hubs/activity`) with project and admin group subscriptions.
+
+### Dashboard
+- Aggregated dashboard summary endpoint: `GET /api/dashboard/summary`.
+
+### SPA Real-Time Lifecycle (SignalR)
+- Authentication for hub requests supports bearer tokens in `Authorization` header or `access_token` query string (WebSocket-friendly).
+- Connections are closed on token expiration (`CloseOnAuthenticationExpiration = true`) so clients can reconnect with a fresh token.
+- On each connection, the server auto-subscribes:
+  - `Administrator` to global admin activity group.
+  - Non-admin users to all projects they can access.
+- Optional hub methods for explicit subscriptions:
+  - `JoinProject(projectId)`
+  - `JoinProjects(projectIds)`
+  - `JoinAllProjects()`
+  - `ResubscribeToScope()`
+  - `LeaveProject(projectId)`
 
 ---
 
@@ -56,6 +83,7 @@ High-level role intent:
 
 For endpoint-level details, see:
 - [API Role Matrix](docs/ROLE_MATRIX.md)
+- [API Filters and Patch Guide](docs/API_FILTERS_AND_PATCH.md)
 
 ---
 

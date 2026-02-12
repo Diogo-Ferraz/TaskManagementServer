@@ -28,6 +28,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         private readonly Guid _nonExistentTaskId = Guid.NewGuid();
         private readonly Guid _projectWithoutAccessId = Guid.NewGuid();
         private readonly Guid _emptyProjectId = Guid.NewGuid();
+        private DateTime _seedNow;
 
 
         public GetTaskItemEndpointTests(ApiWebApplicationFactory<Program> factory)
@@ -42,28 +43,30 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
 
             await _factory.SeedDatabaseAsync(db =>
             {
+                var now = DateTime.UtcNow;
+                _seedNow = now;
                 var project1 = new Project
                 {
                     Id = _project1Id,
                     Name = "Project For Getting Tasks",
                     OwnerUserId = _projectOwnerId,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = now,
                     CreatedByUserId = _projectOwnerId,
-                    LastModifiedAt = DateTime.UtcNow,
+                    LastModifiedAt = now,
                     LastModifiedByUserId = _projectOwnerId
                 };
                 project1.Members.Add(new ProjectMember
                 {
                     ProjectId = _project1Id,
                     UserId = _projectMemberId,
-                    JoinedAt = DateTime.UtcNow,
+                    JoinedAt = now,
                     AddedByUserId = _projectOwnerId
                 });
                 project1.Members.Add(new ProjectMember
                 {
                     ProjectId = _project1Id,
                     UserId = _taskAssigneeInProject1Id,
-                    JoinedAt = DateTime.UtcNow,
+                    JoinedAt = now,
                     AddedByUserId = _projectOwnerId
                 }); // Ensure assignee is also a member
 
@@ -72,9 +75,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     Id = _projectWithoutAccessId,
                     Name = "Project User Cannot Access",
                     OwnerUserId = _project2OwnerId,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = now,
                     CreatedByUserId = _project2OwnerId,
-                    LastModifiedAt = DateTime.UtcNow,
+                    LastModifiedAt = now,
                     LastModifiedByUserId = _project2OwnerId
                 };
                 var project3 = new Project
@@ -82,9 +85,9 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     Id = _emptyProjectId,
                     Name = "Project With No Tasks",
                     OwnerUserId = _project2OwnerId,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = now,
                     CreatedByUserId = _project2OwnerId,
-                    LastModifiedAt = DateTime.UtcNow,
+                    LastModifiedAt = now,
                     LastModifiedByUserId = _project2OwnerId
                 };
 
@@ -98,8 +101,8 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     Status = TaskStatus.InProgress,
                     AssignedUserId = _taskAssigneeInProject1Id,
                     CreatedByUserId = _projectOwnerId,
-                    CreatedAt = DateTime.UtcNow,
-                    LastModifiedAt = DateTime.UtcNow,
+                    CreatedAt = now,
+                    LastModifiedAt = now,
                     LastModifiedByUserId = _projectOwnerId
                 };
                 var task2 = new TaskItem
@@ -111,8 +114,8 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     Status = TaskStatus.Todo,
                     AssignedUserId = _projectOwnerId,
                     CreatedByUserId = _projectMemberId,
-                    CreatedAt = DateTime.UtcNow.AddMinutes(1),
-                    LastModifiedAt = DateTime.UtcNow.AddMinutes(1),
+                    CreatedAt = now.AddMinutes(1),
+                    LastModifiedAt = now.AddMinutes(1),
                     LastModifiedByUserId = _projectMemberId
                 };
                 var task3 = new TaskItem
@@ -124,8 +127,8 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     Status = TaskStatus.Done,
                     AssignedUserId = _project2OwnerId,
                     CreatedByUserId = _project2OwnerId,
-                    CreatedAt = DateTime.UtcNow,
-                    LastModifiedAt = DateTime.UtcNow,
+                    CreatedAt = now.AddMinutes(-1),
+                    LastModifiedAt = now.AddMinutes(-1),
                     LastModifiedByUserId = _project2OwnerId
                 };
 
@@ -300,6 +303,30 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         }
 
         [Fact]
+        public async Task GetTasks_WithPagination_ShouldReturnRequestedPage()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.Administrator);
+
+            // Act
+            var firstPageResponse = await _client.GetAsync("/api/taskitems?page=1&pageSize=1");
+            var secondPageResponse = await _client.GetAsync("/api/taskitems?page=2&pageSize=1");
+
+            // Assert
+            firstPageResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            secondPageResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+            var secondPage = await secondPageResponse.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+
+            firstPage.Should().NotBeNull();
+            secondPage.Should().NotBeNull();
+            firstPage.Should().HaveCount(1);
+            secondPage.Should().HaveCount(1);
+            secondPage![0].Id.Should().NotBe(firstPage![0].Id);
+        }
+
+        [Fact]
         public async Task GetTasks_WithProjectFilter_WhenUserHasNoAccess_ShouldReturnForbidden()
         {
             // Arrange
@@ -310,6 +337,46 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task GetTasks_WithUpdatedByAndSearchFilters_ShouldReturnMatchingTasks()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.Administrator);
+            var baselineResponse = await _client.GetAsync("/api/taskitems?search=Two%20Details");
+            baselineResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var baselineTasks = await baselineResponse.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+            var updatedByUserId = baselineTasks!.Single().LastModifiedByUserId;
+
+            // Act
+            var response = await _client.GetAsync($"/api/taskitems?updatedByUserId={updatedByUserId}&search=Two%20Details");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var tasks = await response.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+            tasks.Should().NotBeNull();
+            tasks.Should().HaveCount(1);
+            tasks![0].Title.Should().Be("Task Two Details");
+            tasks[0].LastModifiedByUserId.Should().Be(updatedByUserId);
+        }
+
+        [Fact]
+        public async Task GetTasks_WithLastModifiedRange_ShouldReturnTasksInRange()
+        {
+            // Arrange
+            SetAuthenticatedUser(_unrelatedUserId, Roles.Administrator);
+            var from = Uri.EscapeDataString(_seedNow.AddMinutes(-2).ToString("O"));
+            var to = Uri.EscapeDataString(_seedNow.AddMinutes(2).ToString("O"));
+
+            // Act
+            var response = await _client.GetAsync($"/api/taskitems?lastModifiedFrom={from}&lastModifiedTo={to}");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var tasks = await response.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+            tasks.Should().NotBeNull();
+            tasks.Should().HaveCount(3);
         }
 
         [Fact]

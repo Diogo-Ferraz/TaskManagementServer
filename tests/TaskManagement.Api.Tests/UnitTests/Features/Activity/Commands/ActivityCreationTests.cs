@@ -182,7 +182,8 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Activity.Commands
             {
                 Id = task.Id,
                 Title = task.Title,
-                Status = TaskStatus.InProgress
+                Status = TaskStatus.InProgress,
+                AssignedUserId = _userId
             };
 
             // Act

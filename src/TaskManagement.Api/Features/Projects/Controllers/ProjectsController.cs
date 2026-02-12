@@ -78,6 +78,32 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         }
 
         /// <summary>
+        /// Partially updates an existing project.
+        /// </summary>
+        /// <param name="id">The ID of the project to patch.</param>
+        /// <param name="command">The partial project update command. Omitted fields are unchanged; explicit null for description clears it.</param>
+        /// <returns>The updated project.</returns>
+        /// <response code="200">Project patched successfully.</response>
+        /// <response code="400">Invalid patch request.</response>
+        /// <response code="401">Unauthorized.</response>
+        /// <response code="403">Forbidden.</response>
+        /// <response code="404">Project not found.</response>
+        [HttpPatch("{id:guid}")]
+        [Authorize(Policy = Policies.CanManageProjects)]
+        [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Patch(Guid id, [FromBody] PatchProjectCommand command)
+        {
+            _logger.LogInformation("API: Patching project with ID: {ProjectId}", id);
+            command.Id = id;
+            var updatedProjectDto = await _mediator.Send(command);
+            return Ok(updatedProjectDto);
+        }
+
+        /// <summary>
         /// Deletes a project by ID.
         /// </summary>
         /// <param name="id">The ID of the project to delete.</param>
@@ -124,6 +150,8 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         /// <summary>
         /// Retrieves projects visible to the current user.
         /// </summary>
+        /// <param name="page">1-based page number.</param>
+        /// <param name="pageSize">Number of items per page (max 200).</param>
         /// <returns>List of visible projects (all for administrators).</returns>
         /// <response code="200">Projects retrieved successfully.</response>
         /// <response code="401">Unauthorized.</response>
@@ -131,10 +159,14 @@ namespace TaskManagement.Api.Features.Projects.Controllers
         [Authorize(Policy = Policies.CanViewOwnProjects)]
         [ProducesResponseType(typeof(IReadOnlyList<ProjectDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetProjects()
+        public async Task<IActionResult> GetProjects([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
             _logger.LogInformation("API: Retrieving visible projects for current user.");
-            var projectDtos = await _mediator.Send(new GetProjectsQuery());
+            var projectDtos = await _mediator.Send(new GetProjectsQuery
+            {
+                Page = page,
+                PageSize = pageSize
+            });
             return Ok(projectDtos);
         }
 

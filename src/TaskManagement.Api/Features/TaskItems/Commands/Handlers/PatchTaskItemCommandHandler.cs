@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using FluentValidation.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,29 +14,29 @@ using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 {
-    public class UpdateTaskItemCommandHandler : IRequestHandler<UpdateTaskItemCommand, TaskItemDto>
+    public class PatchTaskItemCommandHandler : IRequestHandler<PatchTaskItemCommand, TaskItemDto>
     {
         private readonly TaskManagementDbContext _dbContext;
         private readonly IActivityPublisher _activityPublisher;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IMapper _mapper;
         private readonly IUserDirectoryService _userDirectoryService;
+        private readonly IMapper _mapper;
 
-        public UpdateTaskItemCommandHandler(
+        public PatchTaskItemCommandHandler(
             TaskManagementDbContext dbContext,
             IActivityPublisher activityPublisher,
             ICurrentUserService currentUserService,
-            IMapper mapper,
-            IUserDirectoryService userDirectoryService)
+            IUserDirectoryService userDirectoryService,
+            IMapper mapper)
         {
             _dbContext = dbContext;
             _activityPublisher = activityPublisher;
             _currentUserService = currentUserService;
-            _mapper = mapper;
             _userDirectoryService = userDirectoryService;
+            _mapper = mapper;
         }
 
-        public async Task<TaskItemDto> Handle(UpdateTaskItemCommand request, CancellationToken cancellationToken)
+        public async Task<TaskItemDto> Handle(PatchTaskItemCommand request, CancellationToken cancellationToken)
         {
             var currentUserId = _currentUserService.Id;
             if (string.IsNullOrEmpty(currentUserId))
@@ -53,39 +53,46 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             {
                 throw new NotFoundException(nameof(TaskItem), request.Id);
             }
+
             var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
             var isProjectMember = taskItem.Project.Members.Any(m => m.UserId == currentUserId);
-            bool isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
-            bool isAssignee = taskItem.AssignedUserId == currentUserId;
+            var isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
+            var isAssignee = taskItem.AssignedUserId == currentUserId;
 
             if (!isAdmin && !isProjectOwner && !isAssignee && !isProjectMember)
             {
                 throw new ForbiddenAccessException("User is not authorized to update this task item.");
             }
 
-            var assignedUserId = NormalizeAssignedUserId(request.AssignedUserId);
-            if (assignedUserId != null)
-            {
-                var userExists = await _userDirectoryService.UserExistsAsync(assignedUserId, cancellationToken);
-                if (!userExists)
-                {
-                    throw new ValidationException(new[]
-                    {
-                        new ValidationFailure(nameof(request.AssignedUserId),
-                            "AssignedUserId must reference an existing user.")
-                    });
-                }
-
-                EnsureProjectMember(_dbContext, taskItem.Project, assignedUserId, currentUserId);
-            }
-
             var previousStatus = taskItem.Status;
             var previousTitle = taskItem.Title;
             var previousAssignedUserId = taskItem.AssignedUserId;
             var previousDueDate = taskItem.DueDate;
-
             _mapper.Map(request, taskItem);
-            taskItem.AssignedUserId = assignedUserId;
+
+            if (request.AssignedUserId.HasValue)
+            {
+                var normalizedAssignedUserId = NormalizeAssignedUserId(request.AssignedUserId.Value);
+                if (normalizedAssignedUserId == null)
+                {
+                    taskItem.AssignedUserId = null;
+                }
+                else
+                {
+                    var userExists = await _userDirectoryService.UserExistsAsync(normalizedAssignedUserId, cancellationToken);
+                    if (!userExists)
+                    {
+                        throw new ValidationException(new[]
+                        {
+                            new ValidationFailure(nameof(request.AssignedUserId),
+                                "AssignedUserId must reference an existing user.")
+                        });
+                    }
+
+                    EnsureProjectMember(_dbContext, taskItem.Project, normalizedAssignedUserId, currentUserId);
+                    taskItem.AssignedUserId = normalizedAssignedUserId;
+                }
+            }
 
             var activityLogs = new List<ActivityLog>();
             if (previousStatus != taskItem.Status)

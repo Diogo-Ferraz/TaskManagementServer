@@ -1,5 +1,6 @@
 ﻿using Serilog;
 using TaskManagement.Api.Features.Activity.Hubs;
+using TaskManagement.Api.Infrastructure.Common.Serialization;
 using TaskManagement.Api.Infrastructure.Common.Settings;
 using TaskManagement.Api.Infrastructure.ExceptionHandling;
 
@@ -9,7 +10,11 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
     {
         public static IServiceCollection AddApiConfiguration(this IServiceCollection services)
         {
-            services.AddControllers();
+            services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.Converters.Add(new OptionalJsonConverterFactory());
+                });
             services.AddEndpointsApiExplorer();
             services.AddExceptionHandler<GlobalExceptionHandler>();
             services.AddProblemDetails();
@@ -64,7 +69,10 @@ namespace TaskManagement.Api.Infrastructure.Common.Configuration
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
-            app.MapHub<ActivityHub>("/hubs/activity");
+            app.MapHub<ActivityHub>("/hubs/activity", options =>
+            {
+                options.CloseOnAuthenticationExpiration = true;
+            });
 
             return app;
         }

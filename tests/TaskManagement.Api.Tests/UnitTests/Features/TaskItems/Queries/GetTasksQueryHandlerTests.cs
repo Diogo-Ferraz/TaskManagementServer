@@ -44,21 +44,22 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
 
         private void SeedDatabase()
         {
+            var now = DateTime.UtcNow;
             var project = new Project
             {
                 Id = _projectId,
                 Name = "Project A",
                 OwnerUserId = _ownerId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = now,
                 CreatedByUserId = _ownerId,
-                LastModifiedAt = DateTime.UtcNow,
+                LastModifiedAt = now,
                 LastModifiedByUserId = _ownerId
             };
             project.Members.Add(new ProjectMember
             {
                 ProjectId = _projectId,
                 UserId = _memberId,
-                JoinedAt = DateTime.UtcNow,
+                JoinedAt = now,
                 AddedByUserId = _ownerId
             });
 
@@ -67,9 +68,9 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
                 Id = _otherProjectId,
                 Name = "Project B",
                 OwnerUserId = _otherUserId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = now,
                 CreatedByUserId = _otherUserId,
-                LastModifiedAt = DateTime.UtcNow,
+                LastModifiedAt = now,
                 LastModifiedByUserId = _otherUserId
             };
 
@@ -79,39 +80,42 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
                 {
                     Id = Guid.NewGuid(),
                     Title = "Task A1",
+                    Description = "Frontend work",
                     ProjectId = _projectId,
                     Project = project,
                     AssignedUserId = _memberId,
                     Status = TaskStatus.Todo,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = now,
                     CreatedByUserId = _ownerId,
-                    LastModifiedAt = DateTime.UtcNow,
+                    LastModifiedAt = now.AddDays(-5),
                     LastModifiedByUserId = _ownerId
                 },
                 new TaskItem
                 {
                     Id = Guid.NewGuid(),
                     Title = "Task A2",
+                    Description = "Backend API search",
                     ProjectId = _projectId,
                     Project = project,
                     AssignedUserId = null,
                     Status = TaskStatus.InProgress,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = now,
                     CreatedByUserId = _ownerId,
-                    LastModifiedAt = DateTime.UtcNow,
-                    LastModifiedByUserId = _ownerId
+                    LastModifiedAt = now.AddDays(-1),
+                    LastModifiedByUserId = _memberId
                 },
                 new TaskItem
                 {
                     Id = Guid.NewGuid(),
                     Title = "Task B1",
+                    Description = "Infra cleanup",
                     ProjectId = _otherProjectId,
                     Project = otherProject,
                     AssignedUserId = _otherUserId,
                     Status = TaskStatus.Done,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = now,
                     CreatedByUserId = _otherUserId,
-                    LastModifiedAt = DateTime.UtcNow,
+                    LastModifiedAt = now.AddDays(-2),
                     LastModifiedByUserId = _otherUserId
                 });
 
@@ -156,6 +160,40 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
             Func<Task> act = async () => await _handler.Handle(new GetTasksQuery { ProjectId = _otherProjectId }, CancellationToken.None);
 
             await act.Should().ThrowAsync<ForbiddenAccessException>();
+        }
+
+        [Fact]
+        public async Task Handle_ShouldFilterByUpdatedByUserId_AndSearch_ForAdmin()
+        {
+            _mockCurrentUser.Setup(u => u.Id).Returns(_ownerId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+
+            var result = await _handler.Handle(new GetTasksQuery
+            {
+                UpdatedByUserId = _memberId,
+                Search = "Backend"
+            }, CancellationToken.None);
+
+            result.Should().HaveCount(1);
+            result[0].Title.Should().Be("Task A2");
+        }
+
+        [Fact]
+        public async Task Handle_ShouldFilterByLastModifiedDateRange_ForAdmin()
+        {
+            _mockCurrentUser.Setup(u => u.Id).Returns(_ownerId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.Administrator)).Returns(true);
+
+            var now = DateTime.UtcNow;
+            var result = await _handler.Handle(new GetTasksQuery
+            {
+                LastModifiedFrom = now.AddDays(-3),
+                LastModifiedTo = now
+            }, CancellationToken.None);
+
+            result.Should().HaveCount(2);
+            result.Should().Contain(t => t.Title == "Task A2");
+            result.Should().Contain(t => t.Title == "Task B1");
         }
 
         public void Dispose()
