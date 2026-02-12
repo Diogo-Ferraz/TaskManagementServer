@@ -54,6 +54,7 @@ flowchart LR
   - `TaskAssigneeChanged`
   - `TaskDueDateChanged`
 - Activity feed endpoint for dashboard consumption with pagination.
+- Activity payload includes `oldValue/newValue` for rename/assignee/due-date changes and `oldStatus/newStatus` for status transitions.
 - SignalR hub for real-time updates (`/hubs/activity`) with project and admin group subscriptions.
 
 ### Dashboard

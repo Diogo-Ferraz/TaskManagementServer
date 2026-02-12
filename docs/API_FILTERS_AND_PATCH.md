@@ -94,3 +94,11 @@ Returns aggregated counters for the current user scope (administrator sees globa
 - `TaskDeleted`
 - `TaskAssigneeChanged`
 - `TaskDueDateChanged`
+
+For rename/assignment/due-date events, payload can include:
+- `oldValue`
+- `newValue`
+
+For status transitions, payload uses:
+- `oldStatus`
+- `newStatus`
