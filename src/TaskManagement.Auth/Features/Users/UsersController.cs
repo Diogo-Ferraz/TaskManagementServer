@@ -38,7 +38,9 @@ namespace TaskManagement.Auth.Features.Users
         /// <param name="take">Optional number of records to take.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A paged list of users.</returns>
-        [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+        [Authorize(
+            AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+            Roles = Roles.Administrator)]
         [HttpGet]
         public async Task<ActionResult<UserListResponse>> GetUsers(
             [FromQuery] string? search,
