@@ -28,12 +28,6 @@ namespace TaskManagement.Auth.Features.Authorization.Services
 
             foreach (var clientSettings in _clientSettings.Clients)
             {
-                var client = await manager.FindByClientIdAsync(clientSettings.ClientId, cancellationToken);
-                if (client != null)
-                {
-                    await manager.DeleteAsync(client, cancellationToken);
-                }
-
                 var applicationDescriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientSettings.ClientId,
@@ -71,7 +65,14 @@ namespace TaskManagement.Auth.Features.Authorization.Services
                     applicationDescriptor.Permissions.Add($"{Permissions.Prefixes.Scope}{extraScope}");
                 }
 
-                await manager.CreateAsync(applicationDescriptor, cancellationToken);
+                var existingClient = await manager.FindByClientIdAsync(clientSettings.ClientId, cancellationToken);
+                if (existingClient == null)
+                {
+                    await manager.CreateAsync(applicationDescriptor, cancellationToken);
+                    continue;
+                }
+
+                await manager.UpdateAsync(existingClient, applicationDescriptor, cancellationToken);
             }
         }
 
