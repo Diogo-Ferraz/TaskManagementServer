@@ -65,3 +65,4 @@ Supported query params:
 - `ProjectManager` can manage projects globally.
 - `ProjectManager` can manage tasks, but inside project scope.
 - `User` can manage tasks, but task delete is intentionally stricter (owner-only in handler).
+- Project/member display names may include `(Inactive)` suffix when user directory reports a deactivated account.

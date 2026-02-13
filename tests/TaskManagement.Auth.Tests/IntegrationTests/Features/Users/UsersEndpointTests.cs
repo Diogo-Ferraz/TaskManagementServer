@@ -14,6 +14,7 @@ using TaskManagement.Auth.Tests.TestHelpers.Fixtures;
 using TaskManagement.Auth.Features.Identity.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
 {
@@ -55,16 +56,114 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             user.Should().NotBeNull();
             user!.Id.Should().Be(userId);
             user.Email.Should().Be(TestData.User.Email);
+            user.IsActive.Should().BeTrue();
+            user.Roles.Should().NotBeNull();
         }
 
         [Fact]
         public async Task GetUserById_WhenNotFound_ShouldReturnNotFound()
         {
-            var token = await GetAccessTokenAsync();
+            var token = await GetAdminAccessTokenAsync();
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var response = await _client.GetAsync($"/api/users/{Guid.NewGuid()}");
             response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenAdmin_ShouldReturnDetails()
+        {
+            var userId = await GetSeededUserIdAsync();
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users/{userId}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var details = await response.Content.ReadFromJsonAsync<UserDetailsDto>();
+            details.Should().NotBeNull();
+            details!.Id.Should().Be(userId);
+            details.Email.Should().Be(TestData.User.Email);
+            details.Roles.Should().NotBeNull();
+            details.EmailConfirmed.Should().BeTrue();
+            details.IsActive.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenNotAdmin_ShouldReturnForbidden()
+        {
+            var userId = await GetSeededUserIdAsync();
+            var token = await GetAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users/{userId}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenUnauthenticated_ShouldReturnUnauthorized()
+        {
+            var userId = await GetSeededUserIdAsync();
+            _client.DefaultRequestHeaders.Authorization = null;
+
+            var response = await _client.GetAsync($"/api/users/{userId}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenNotFound_ShouldReturnNotFound()
+        {
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users/{Guid.NewGuid()}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenIdIsWhitespace_ShouldReturnBadRequest()
+        {
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync("/api/users/%20/details");
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenUserIsInactive_ShouldReturnIsActiveFalse()
+        {
+            string userId;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var user = new ApplicationUser
+                {
+                    UserName = $"details-inactive-{Guid.NewGuid():N}@example.com",
+                    Email = $"details-inactive-{Guid.NewGuid():N}@example.com",
+                    EmailConfirmed = true
+                };
+
+                var createResult = await userManager.CreateAsync(user, "StrongPassword@123");
+                createResult.Succeeded.Should().BeTrue();
+                userId = user.Id;
+
+                user.LockoutEnabled = true;
+                user.LockoutEnd = DateTimeOffset.MaxValue;
+                var updateResult = await userManager.UpdateAsync(user);
+                updateResult.Succeeded.Should().BeTrue();
+            }
+
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users/{userId}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var details = await response.Content.ReadFromJsonAsync<UserDetailsDto>();
+            details.Should().NotBeNull();
+            details!.Id.Should().Be(userId);
+            details.IsActive.Should().BeFalse();
         }
 
         [Fact]
@@ -74,12 +173,254 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var response = await _client.GetAsync("/api/users?search=authorized");
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task GetUsers_WithSearch_WhenAdmin_ShouldReturnMatchingUsers()
+        {
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync("/api/users?search=authorized");
             response.StatusCode.Should().Be(HttpStatusCode.OK);
 
             var list = await response.Content.ReadFromJsonAsync<UserListResponse>();
             list.Should().NotBeNull();
             list!.Total.Should().BeGreaterThan(0);
             list.Items.Should().ContainSingle(u => u.Email == TestData.User.Email);
+            list.Items.Should().Contain(u => u.Email == TestData.User.Email && u.Roles != null);
+        }
+
+        [Fact]
+        public async Task GetUsers_WithIsActiveFilter_ShouldReturnOnlyMatchingUsers()
+        {
+            var userId = string.Empty;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+                var uniqueEmail = $"inactive-{Guid.NewGuid():N}@example.com";
+                var user = new ApplicationUser
+                {
+                    UserName = uniqueEmail,
+                    Email = uniqueEmail,
+                    EmailConfirmed = true
+                };
+
+                var createResult = await userManager.CreateAsync(user, "StrongPassword@123");
+                createResult.Succeeded.Should().BeTrue();
+
+                userId = user.Id;
+                user.LockoutEnabled = true;
+                user.LockoutEnd = DateTimeOffset.MaxValue;
+                await userManager.UpdateAsync(user);
+            }
+
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var inactiveResponse = await _client.GetAsync("/api/users?isActive=false");
+            inactiveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var inactiveList = await inactiveResponse.Content.ReadFromJsonAsync<UserListResponse>();
+            inactiveList.Should().NotBeNull();
+            inactiveList!.Items.Should().Contain(u => u.Id == userId && !u.IsActive);
+
+            var activeResponse = await _client.GetAsync("/api/users?isActive=true");
+            activeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var activeList = await activeResponse.Content.ReadFromJsonAsync<UserListResponse>();
+            activeList.Should().NotBeNull();
+            activeList!.Items.Should().NotContain(u => u.Id == userId);
+        }
+
+        [Fact]
+        public async Task GetUsers_WithRoleFilter_ShouldReturnOnlyMatchingRole()
+        {
+            var managedUserEmail = $"pm-{Guid.NewGuid():N}@example.com";
+            var managedUserId = string.Empty;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+                if (!await roleManager.RoleExistsAsync(Roles.ProjectManager))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(Roles.ProjectManager));
+                }
+
+                var user = new ApplicationUser
+                {
+                    UserName = managedUserEmail,
+                    Email = managedUserEmail,
+                    EmailConfirmed = true
+                };
+
+                var createResult = await userManager.CreateAsync(user, "StrongPassword@123");
+                createResult.Succeeded.Should().BeTrue();
+
+                managedUserId = user.Id;
+                var addRoleResult = await userManager.AddToRoleAsync(user, Roles.ProjectManager);
+                addRoleResult.Succeeded.Should().BeTrue();
+            }
+
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users?role={Roles.ProjectManager}");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var list = await response.Content.ReadFromJsonAsync<UserListResponse>();
+            list.Should().NotBeNull();
+            list!.Items.Should().Contain(u => u.Id == managedUserId);
+            list.Items.Should().OnlyContain(u => u.Roles.Contains(Roles.ProjectManager));
+        }
+
+        [Fact]
+        public async Task SetUserStatus_WhenAuthenticatedButNotAdmin_ShouldReturnForbidden()
+        {
+            var userId = await GetSeededUserIdAsync();
+            var token = await GetAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.PatchAsJsonAsync($"/api/users/{userId}/status", new SetUserStatusRequest
+            {
+                IsActive = false
+            });
+
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task SetUserStatus_WhenAdmin_ShouldDeactivateAndReactivateUser()
+        {
+            var userId = await GetSeededUserIdAsync();
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var deactivateResponse = await _client.PatchAsJsonAsync($"/api/users/{userId}/status", new SetUserStatusRequest
+            {
+                IsActive = false
+            });
+            deactivateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var user = await userManager.FindByIdAsync(userId);
+                user.Should().NotBeNull();
+                user!.LockoutEnabled.Should().BeTrue();
+                user.LockoutEnd.Should().Be(DateTimeOffset.MaxValue);
+            }
+
+            var reactivateResponse = await _client.PatchAsJsonAsync($"/api/users/{userId}/status", new SetUserStatusRequest
+            {
+                IsActive = true
+            });
+            reactivateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var user = await userManager.FindByIdAsync(userId);
+                user.Should().NotBeNull();
+                user!.LockoutEnabled.Should().BeFalse();
+                user.LockoutEnd.Should().BeNull();
+            }
+        }
+
+        [Fact]
+        public async Task SetUserStatus_WhenAdminDeactivatesSelf_ShouldReturnBadRequest()
+        {
+            const string adminEmail = "admin-users-test@example.com";
+
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            string adminUserId;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var adminUser = await userManager.FindByEmailAsync(adminEmail);
+                adminUser.Should().NotBeNull();
+                adminUserId = adminUser!.Id;
+            }
+
+            var response = await _client.PatchAsJsonAsync($"/api/users/{adminUserId}/status", new SetUserStatusRequest
+            {
+                IsActive = false
+            });
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var adminUser = await userManager.FindByIdAsync(adminUserId);
+                adminUser.Should().NotBeNull();
+                adminUser!.LockoutEnabled.Should().BeFalse();
+                adminUser.LockoutEnd.Should().BeNull();
+            }
+        }
+
+        [Fact]
+        public async Task SetUserStatus_WhenWouldDeactivateLastActiveAdministrator_ShouldReturnBadRequest()
+        {
+            const string adminAEmail = "admin-a-users-test@example.com";
+            const string adminBEmail = "admin-b-users-test@example.com";
+            const string adminPassword = "StrongPassword@123";
+
+            var tokenA = await GetAdminAccessTokenAsync(adminAEmail, adminPassword);
+            var tokenB = await GetAdminAccessTokenAsync(adminBEmail, adminPassword);
+
+            string adminAId;
+            string adminBId;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var adminA = await userManager.FindByEmailAsync(adminAEmail);
+                var adminB = await userManager.FindByEmailAsync(adminBEmail);
+                adminA.Should().NotBeNull();
+                adminB.Should().NotBeNull();
+                adminAId = adminA!.Id;
+                adminBId = adminB!.Id;
+            }
+
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenB);
+            var deactivateAResponse = await _client.PatchAsJsonAsync($"/api/users/{adminAId}/status", new SetUserStatusRequest
+            {
+                IsActive = false
+            });
+            deactivateAResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var allAdmins = await userManager.GetUsersInRoleAsync(Roles.Administrator);
+                foreach (var admin in allAdmins.Where(a => !string.Equals(a.Id, adminBId, StringComparison.Ordinal)))
+                {
+                    admin.LockoutEnabled = true;
+                    admin.LockoutEnd = DateTimeOffset.MaxValue;
+                    admin.AccessFailedCount = 0;
+                    var updateResult = await userManager.UpdateAsync(admin);
+                    updateResult.Succeeded.Should().BeTrue();
+                }
+            }
+
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenA);
+            var deactivateBResponse = await _client.PatchAsJsonAsync($"/api/users/{adminBId}/status", new SetUserStatusRequest
+            {
+                IsActive = false
+            });
+            deactivateBResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var adminB = await userManager.FindByIdAsync(adminBId);
+                adminB.Should().NotBeNull();
+                adminB!.LockoutEnabled.Should().BeFalse();
+                adminB.LockoutEnd.Should().BeNull();
+            }
         }
 
         private async Task<string> GetSeededUserIdAsync()
@@ -92,24 +433,30 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
         }
 
         private async Task<string> GetAccessTokenAsync()
+            => await GetAccessTokenAsync(TestData.User.Email, TestData.User.Password);
+
+        private async Task<string> GetAccessTokenAsync(string email, string password)
         {
-            var authorizationResponse = await InitiateAuthorizationRequest(new AuthorizationParameters());
+            var authClient = _factory.CreateClientWithNoRedirects();
+            var authorizationResponse = await InitiateAuthorizationRequest(authClient, new AuthorizationParameters(Prompt: "login"));
 
             authorizationResponse.StatusCode.Should().Be(HttpStatusCode.Found);
-            authorizationResponse.Headers.Location?.OriginalString.Should().Contain(AuthorizationTestConfiguration.LoginPath);
-
-            var (loginResponse, _) = await PerformLogin(
-                authorizationResponse.Headers.Location?.OriginalString
-                    ?? throw new InvalidOperationException("Missing location header"));
-
-            loginResponse.StatusCode.Should().Be(HttpStatusCode.Found);
-
-            var nextLocation = loginResponse.Headers.Location?.ToString()
+            var nextLocation = authorizationResponse.Headers.Location?.ToString()
                 ?? throw new InvalidOperationException("Missing location header");
+
+            if (nextLocation.Contains(AuthorizationTestConfiguration.LoginPath, StringComparison.OrdinalIgnoreCase))
+            {
+                var (loginResponse, _) = await PerformLogin(authClient, nextLocation, email, password);
+
+                loginResponse.StatusCode.Should().Be(HttpStatusCode.Found);
+
+                nextLocation = loginResponse.Headers.Location?.ToString()
+                    ?? throw new InvalidOperationException("Missing location header");
+            }
 
             if (!nextLocation.Contains("code=", StringComparison.OrdinalIgnoreCase))
             {
-                var followResponse = await _client.GetAsync(nextLocation);
+                var followResponse = await authClient.GetAsync(nextLocation);
 
                 if (followResponse.StatusCode == HttpStatusCode.Found &&
                     followResponse.Headers.Location?.ToString().Contains("code=", StringComparison.OrdinalIgnoreCase) == true)
@@ -118,7 +465,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
                 }
                 else
                 {
-                    var consentResponse = await ProvideConsent(nextLocation);
+                    var consentResponse = await ProvideConsent(authClient, nextLocation);
                     consentResponse.StatusCode.Should().Be(HttpStatusCode.Found);
                     nextLocation = consentResponse.Headers.Location?.ToString()
                         ?? throw new InvalidOperationException("Missing location header");
@@ -129,7 +476,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
 
             var authorizationCode = ExtractAuthorizationCode(nextLocation);
 
-            var tokenResponse = await ExchangeCodeForTokens(authorizationCode);
+            var tokenResponse = await ExchangeCodeForTokens(authClient, authorizationCode);
             tokenResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
             var tokens = await AuthorizationTestHelpers.DeserializeTokenResponse(tokenResponse);
@@ -138,7 +485,55 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             return tokens.AccessToken;
         }
 
-        private async Task<HttpResponseMessage> InitiateAuthorizationRequest(AuthorizationParameters parameters)
+        private async Task<string> GetAdminAccessTokenAsync()
+            => await GetAdminAccessTokenAsync("admin-users-test@example.com", "StrongPassword@123");
+
+        private async Task<string> GetAdminAccessTokenAsync(string adminEmail, string adminPassword)
+        {
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+                if (!await roleManager.RoleExistsAsync(Roles.Administrator))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(Roles.Administrator));
+                }
+
+                var adminUser = await userManager.FindByEmailAsync(adminEmail);
+                if (adminUser == null)
+                {
+                    adminUser = new ApplicationUser
+                    {
+                        UserName = adminEmail,
+                        Email = adminEmail,
+                        EmailConfirmed = true
+                    };
+                    var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+                    createResult.Succeeded.Should().BeTrue();
+                }
+
+                if (!await userManager.IsInRoleAsync(adminUser, Roles.Administrator))
+                {
+                    await userManager.AddToRoleAsync(adminUser, Roles.Administrator);
+                }
+
+                if (adminUser.LockoutEnabled || adminUser.LockoutEnd.HasValue)
+                {
+                    adminUser.LockoutEnabled = false;
+                    adminUser.LockoutEnd = null;
+                    adminUser.AccessFailedCount = 0;
+                    var updateResult = await userManager.UpdateAsync(adminUser);
+                    updateResult.Succeeded.Should().BeTrue();
+                }
+            }
+
+            return await GetAccessTokenAsync(adminEmail, adminPassword);
+        }
+
+        private static async Task<HttpResponseMessage> InitiateAuthorizationRequest(
+            HttpClient client,
+            AuthorizationParameters parameters)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, AuthorizationTestConfiguration.AuthorizeEndpoint)
             {
@@ -152,22 +547,36 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
                 })
             };
 
-            return await _client.SendAsync(request);
+            if (!string.IsNullOrWhiteSpace(parameters.Prompt))
+            {
+                request.Content = AuthorizationTestHelpers.CreateTokenRequestContent(new Dictionary<string, string>
+                {
+                    ["client_id"] = parameters.ClientId,
+                    ["client_secret"] = parameters.ClientSecret,
+                    ["response_type"] = parameters.ResponseType,
+                    ["redirect_uri"] = parameters.RedirectUri,
+                    ["scope"] = parameters.Scope,
+                    ["prompt"] = parameters.Prompt
+                });
+            }
+
+            return await client.SendAsync(request);
         }
 
-        private async Task<(HttpResponseMessage Response, string? AntiForgeryToken)> PerformLogin(
+        private static async Task<(HttpResponseMessage Response, string? AntiForgeryToken)> PerformLogin(
+            HttpClient client,
             string loginPageUrl,
             string email = TestData.User.Email,
             string password = TestData.User.Password)
         {
-            var loginPageResponse = await _client.GetAsync(loginPageUrl);
+            var loginPageResponse = await client.GetAsync(loginPageUrl);
             var document = await HtmlHelpers.GetDocumentAsync(loginPageResponse);
             var loginForm = (IHtmlFormElement)document.QuerySelector("form")
                 ?? throw new InvalidOperationException("Login form not found");
 
             var antiForgeryToken = loginForm["__RequestVerificationToken"]?.GetAttribute("value");
 
-            var response = await _client.SendAsync(
+            var response = await client.SendAsync(
                 loginForm,
                 (HtmlElement)loginForm.QuerySelector("[type=submit]")
                     ?? throw new InvalidOperationException("Submit button not found"),
@@ -181,9 +590,9 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             return (response, antiForgeryToken);
         }
 
-        private async Task<HttpResponseMessage> ProvideConsent(string consentPageUrl)
+        private static async Task<HttpResponseMessage> ProvideConsent(HttpClient client, string consentPageUrl)
         {
-            var consentPageResponse = await _client.GetAsync(consentPageUrl);
+            var consentPageResponse = await client.GetAsync(consentPageUrl);
             var consentDocument = await HtmlHelpers.GetDocumentAsync(consentPageResponse);
             var consentForm = (IHtmlFormElement)consentDocument.QuerySelector("form[action='/connect/authorize']")
                 ?? throw new InvalidOperationException("Consent form not found");
@@ -191,7 +600,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             var submitButton = (HtmlElement)consentForm.QuerySelector("[name='submit.Accept']")
                 ?? throw new InvalidOperationException("Submit button not found");
 
-            var response = await _client.SendAsync(
+            var response = await client.SendAsync(
                 consentForm,
                 submitButton,
                 new Dictionary<string, string>
@@ -216,7 +625,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             return code;
         }
 
-        private async Task<HttpResponseMessage> ExchangeCodeForTokens(string code)
+        private static async Task<HttpResponseMessage> ExchangeCodeForTokens(HttpClient client, string code)
         {
             var tokenRequest = new HttpRequestMessage(HttpMethod.Post, AuthorizationTestConfiguration.TokenEndpoint)
             {
@@ -230,7 +639,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
                 })
             };
 
-            return await _client.SendAsync(tokenRequest);
+            return await client.SendAsync(tokenRequest);
         }
     }
 }

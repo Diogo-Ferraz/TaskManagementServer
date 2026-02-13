@@ -29,12 +29,21 @@ flowchart LR
 - OAuth2 / OpenID Connect via OpenIddict.
 - JWT validation in API service.
 - Role and resource-based authorization checks in handlers.
+- Auth user directory exposes `isActive` status and user roles.
+- Admin-only user management endpoints in Auth service:
+  - `GET /api/users` with `search`, `isActive`, and `role` filters (paged).
+  - `GET /api/users/{id}/details` for richer admin user profile data.
+  - `PATCH /api/users/{id}/status` to activate/deactivate users.
+- Safety guards:
+  - Admins cannot deactivate themselves.
+  - The last active administrator cannot be deactivated.
 
 ### Project Management
 - Create, update, delete, and read projects.
 - Partial updates via `PATCH /api/projects/{id}`.
 - Project membership tracking (`ProjectMember`) with audit fields.
 - Project members listing endpoint with display names.
+- Inactive users are surfaced in display names as `Name (Inactive)` when resolved from user directory.
 
 ### Task Management
 - Create, update, delete, and read task items.
@@ -177,6 +186,27 @@ Test coverage includes:
 - Command/query handler rules
 - API integration flows
 - Persistence and mappings
+
+---
+
+## Auth Swagger Token (Dev)
+
+`TaskManagement.Auth` Swagger is intentionally scoped to `api/*` endpoints (admin user-management APIs).  
+OAuth/OpenID endpoints (`/connect/*`) are not shown in Auth Swagger to avoid route conflicts and keep docs focused.
+
+To call protected Auth admin endpoints from Swagger:
+
+1. Obtain an access token from the Auth service (e.g., via SPA login flow, Postman, or direct OAuth2 Authorization Code + token exchange).
+2. Open `https://auth.localhost/swagger`.
+3. Click **Authorize** and paste:
+
+```text
+Bearer <access_token>
+```
+
+Notes:
+- This is a development/testing workflow.
+- For full OAuth2 Swagger login UX, use `TaskManagement.Api` Swagger (resource API), where OAuth2 authorization flow is the primary fit.
 
 ---
 

@@ -7,6 +7,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Authorization.Mode
         string ClientSecret = TestData.Client.Secret,
         string RedirectUri = TestData.Client.RedirectUri,
         string ResponseType = "code",
-        string Scope = "openid profile"
+        string Scope = "openid profile",
+        string? Prompt = null
     );
 }

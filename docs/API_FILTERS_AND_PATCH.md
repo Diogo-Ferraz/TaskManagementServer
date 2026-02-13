@@ -8,6 +8,7 @@ List endpoints support pagination with `page` and `pageSize`:
 - `GET /api/projects`
 - `GET /api/taskitems`
 - `GET /api/activity`
+- `GET /api/users` (Auth service, admin-only)
 
 Defaults and caps:
 - Projects: default `page=1`, `pageSize=50`, max `200`
@@ -16,6 +17,25 @@ Defaults and caps:
 
 Legacy compatibility:
 - `GET /api/taskitems` and `GET /api/activity` still support `limit` (mapped to first page with capped size).
+- `GET /api/users` still supports `skip/take` (mapped with standard paging behavior).
+
+## User Filters (Auth Service)
+
+`GET /api/users` supports:
+- `search` (display name/email/username contains)
+- `isActive`
+- `role`
+- `page`, `pageSize`, `skip`, `take`
+
+`PATCH /api/users/{id}/status`:
+- `{"isActive": true}` reactivates an account.
+- `{"isActive": false}` deactivates an account.
+- Admin safety rules:
+  - self-deactivation is blocked.
+  - deactivating the last active administrator is blocked.
+
+`GET /api/users/{id}/details` (admin-only):
+- Includes richer profile fields for admin UI (roles, confirmations, lockout, failed access count, MFA flag).
 
 ## Task Filters
 

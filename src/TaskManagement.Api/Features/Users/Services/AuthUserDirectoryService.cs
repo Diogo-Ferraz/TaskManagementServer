@@ -62,7 +62,15 @@ namespace TaskManagement.Api.Features.Users.Services
             response.EnsureSuccessStatusCode();
 
             var user = await response.Content.ReadFromJsonAsync<UserSummaryResponse>(cancellationToken: cancellationToken);
-            return user?.DisplayName ?? user?.UserName ?? user?.Email;
+            var baseDisplayName = user?.DisplayName ?? user?.UserName ?? user?.Email;
+            if (string.IsNullOrWhiteSpace(baseDisplayName))
+            {
+                return null;
+            }
+
+            return user?.IsActive == false
+                ? $"{baseDisplayName} (Inactive)"
+                : baseDisplayName;
         }
 
         private sealed class UserSummaryResponse
@@ -70,6 +78,7 @@ namespace TaskManagement.Api.Features.Users.Services
             public string? DisplayName { get; set; }
             public string? UserName { get; set; }
             public string? Email { get; set; }
+            public bool IsActive { get; set; }
         }
     }
 }
