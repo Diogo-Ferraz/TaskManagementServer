@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
 using System.Security.Claims;
+using Swashbuckle.AspNetCore.Annotations;
 using TaskManagement.Auth.Features.Identity.Models;
 using TaskManagement.Auth.Features.Users.Models;
 using TaskManagement.Shared.Models;
@@ -50,6 +51,13 @@ namespace TaskManagement.Auth.Features.Users
             AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
             Roles = Roles.Administrator)]
         [HttpGet]
+        [SwaggerOperation(
+            Summary = "List users (admin)",
+            Description = "Returns a paged admin-only list of users with optional filters.")]
+        [ProducesResponseType(typeof(UserListResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<UserListResponse>> GetUsers(
             [FromQuery] string? search,
             [FromQuery] bool? isActive,
@@ -138,6 +146,13 @@ namespace TaskManagement.Auth.Features.Users
         /// <returns>The user summary.</returns>
         [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
         [HttpGet("{id}")]
+        [SwaggerOperation(
+            Summary = "Get user by id",
+            Description = "Returns a basic user summary for authenticated service-to-service lookups.")]
+        [ProducesResponseType(typeof(UserSummaryDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserSummaryDto>> GetUserById(string id, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(id))
@@ -177,6 +192,14 @@ namespace TaskManagement.Auth.Features.Users
             AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
             Roles = Roles.Administrator)]
         [HttpGet("{id}/details")]
+        [SwaggerOperation(
+            Summary = "Get user details (admin)",
+            Description = "Returns admin-facing user details for user management screens.")]
+        [ProducesResponseType(typeof(UserDetailsDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserDetailsDto>> GetUserDetailsById(string id, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(id))
@@ -222,6 +245,14 @@ namespace TaskManagement.Auth.Features.Users
             AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
             Roles = Roles.Administrator)]
         [HttpPatch("{id}/status")]
+        [SwaggerOperation(
+            Summary = "Set user active status (admin)",
+            Description = "Activates or deactivates a user account with admin safety guards.")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> SetUserStatus(
             string id,
             [FromBody] SetUserStatusRequest request,

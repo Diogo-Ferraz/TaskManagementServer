@@ -7,6 +7,7 @@ namespace TaskManagement.Auth.Infrastructure.Common.Configuration
         public static IServiceCollection AddApiConfiguration(this IServiceCollection services)
         {
             services.AddControllers();
+            services.AddSwaggerConfiguration();
 
             return services;
         }
@@ -19,6 +20,12 @@ namespace TaskManagement.Auth.Infrastructure.Common.Configuration
             {
                 app.UseDeveloperExceptionPage();
                 app.UseMigrationsEndPoint();
+                app.UseSwagger();
+                app.UseSwaggerUI(options =>
+                {
+                    options.SwaggerEndpoint("/swagger/v1/swagger.json", "TaskManagement.Auth v1");
+                    options.RoutePrefix = "swagger";
+                });
             }
             else
             {

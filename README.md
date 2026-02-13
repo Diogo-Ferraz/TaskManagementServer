@@ -189,6 +189,27 @@ Test coverage includes:
 
 ---
 
+## Auth Swagger Token (Dev)
+
+`TaskManagement.Auth` Swagger is intentionally scoped to `api/*` endpoints (admin user-management APIs).  
+OAuth/OpenID endpoints (`/connect/*`) are not shown in Auth Swagger to avoid route conflicts and keep docs focused.
+
+To call protected Auth admin endpoints from Swagger:
+
+1. Obtain an access token from the Auth service (e.g., via SPA login flow, Postman, or direct OAuth2 Authorization Code + token exchange).
+2. Open `https://auth.localhost/swagger`.
+3. Click **Authorize** and paste:
+
+```text
+Bearer <access_token>
+```
+
+Notes:
+- This is a development/testing workflow.
+- For full OAuth2 Swagger login UX, use `TaskManagement.Api` Swagger (resource API), where OAuth2 authorization flow is the primary fit.
+
+---
+
 ## Project Goal
 
 This project is intended as a production-minded learning and portfolio codebase for a full-stack Jira-like platform.
