@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
@@ -244,6 +245,8 @@ namespace TaskManagement.Auth.Features.Authorization
         /// </summary>
         /// <returns>The token response.</returns>
         [HttpPost("~/connect/token"), IgnoreAntiforgeryToken, Produces("application/json")]
+        [EnableRateLimiting(RateLimitingPolicies.TokenExchange)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<IActionResult> Exchange()
         {
             var request = HttpContext.GetOpenIddictServerRequest() ??

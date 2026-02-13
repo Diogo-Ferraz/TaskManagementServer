@@ -37,6 +37,9 @@ flowchart LR
 - Safety guards:
   - Admins cannot deactivate themselves.
   - The last active administrator cannot be deactivated.
+- Rate limiting on sensitive auth/admin operations:
+  - `POST /connect/token`
+  - Admin user-management endpoints (`GET /api/users`, `GET /api/users/{id}/details`, `PATCH /api/users/{id}/status`)
 
 ### Project Management
 - Create, update, delete, and read projects.
@@ -93,7 +96,7 @@ High-level role intent:
 
 For endpoint-level details, see:
 - [API Role Matrix](docs/ROLE_MATRIX.md)
-- [API Filters and Patch Guide](docs/API_FILTERS_AND_PATCH.md)
+- [API Contract Guide](docs/API_CONTRACT.md)
 
 ---
 

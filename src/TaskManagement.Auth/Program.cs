@@ -29,6 +29,7 @@ try
     builder.Services.AddDatabaseConfiguration(builder.Configuration);
     builder.Services.AddApiConfiguration();
     builder.Services.AddCorsConfiguration(builder.Configuration);
+    builder.Services.AddRateLimitingConfiguration(builder.Configuration);
     builder.Host.AddLoggingConfiguration(builder.Configuration);
 
     builder.Services.AddIdentityConfiguration();
