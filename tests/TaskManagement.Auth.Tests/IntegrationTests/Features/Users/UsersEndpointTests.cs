@@ -57,6 +57,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             user!.Id.Should().Be(userId);
             user.Email.Should().Be(TestData.User.Email);
             user.IsActive.Should().BeTrue();
+            user.Roles.Should().NotBeNull();
         }
 
         [Fact]
@@ -92,6 +93,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             list.Should().NotBeNull();
             list!.Total.Should().BeGreaterThan(0);
             list.Items.Should().ContainSingle(u => u.Email == TestData.User.Email);
+            list.Items.Should().Contain(u => u.Email == TestData.User.Email && u.Roles != null);
         }
 
         [Fact]

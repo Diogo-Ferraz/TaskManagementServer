@@ -75,20 +75,27 @@ namespace TaskManagement.Auth.Features.Users
                 ? Math.Max(page.Value - 1, 0) * effectivePageSize
                 : Math.Max(skip ?? 0, 0);
 
-            var items = await query
+            var users = await query
                 .OrderBy(u => u.DisplayName ?? u.UserName ?? u.Email ?? string.Empty)
                 .ThenBy(u => u.Id)
                 .Skip(offset)
                 .Take(effectivePageSize)
-                .Select(u => new UserSummaryDto
-                {
-                    Id = u.Id,
-                    DisplayName = u.DisplayName,
-                    UserName = u.UserName,
-                    Email = u.Email,
-                    IsActive = !u.LockoutEnabled || !u.LockoutEnd.HasValue || u.LockoutEnd <= now
-                })
                 .ToListAsync(cancellationToken);
+            var items = new List<UserSummaryDto>(users.Count);
+
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                items.Add(new UserSummaryDto
+                {
+                    Id = user.Id,
+                    DisplayName = user.DisplayName,
+                    UserName = user.UserName,
+                    Email = user.Email,
+                    IsActive = IsUserActive(user, now),
+                    Roles = roles.ToList()
+                });
+            }
 
             return Ok(new UserListResponse
             {
@@ -115,24 +122,25 @@ namespace TaskManagement.Auth.Features.Users
             }
 
             var now = DateTimeOffset.UtcNow;
-            var user = await _userManager.Users.AsNoTracking()
-                .Where(u => u.Id == id)
-                .Select(u => new UserSummaryDto
-                {
-                    Id = u.Id,
-                    DisplayName = u.DisplayName,
-                    UserName = u.UserName,
-                    Email = u.Email,
-                    IsActive = !u.LockoutEnabled || !u.LockoutEnd.HasValue || u.LockoutEnd <= now
-                })
-                .SingleOrDefaultAsync(cancellationToken);
+            var user = await _userManager.Users
+                .SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
 
             if (user is null)
             {
                 return NotFound();
             }
 
-            return Ok(user);
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return Ok(new UserSummaryDto
+            {
+                Id = user.Id,
+                DisplayName = user.DisplayName,
+                UserName = user.UserName,
+                Email = user.Email,
+                IsActive = IsUserActive(user, now),
+                Roles = roles.ToList()
+            });
         }
 
         /// <summary>
@@ -184,5 +192,8 @@ namespace TaskManagement.Auth.Features.Users
             cancellationToken.ThrowIfCancellationRequested();
             return NoContent();
         }
+
+        private static bool IsUserActive(ApplicationUser user, DateTimeOffset now)
+            => !user.LockoutEnabled || !user.LockoutEnd.HasValue || user.LockoutEnd <= now;
     }
 }
