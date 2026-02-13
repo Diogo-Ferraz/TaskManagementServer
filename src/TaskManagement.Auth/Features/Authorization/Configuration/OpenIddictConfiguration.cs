@@ -57,11 +57,21 @@ namespace TaskManagement.Auth.Features.Authorization.Configuration
 
                     options.AllowAuthorizationCodeFlow();
 
-                    options.AddEncryptionKey(new SymmetricSecurityKey(
-                        Convert.FromBase64String(openIddictSettings.EncryptionKey)));
+                    var symmetricKey = new SymmetricSecurityKey(
+                        Convert.FromBase64String(openIddictSettings.EncryptionKey));
+                    options.AddEncryptionKey(symmetricKey);
 
-                    options.AddDevelopmentEncryptionCertificate()
-                       .AddDevelopmentSigningCertificate();
+                    if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"))
+                    {
+                        options.AddDevelopmentEncryptionCertificate()
+                           .AddDevelopmentSigningCertificate();
+                    }
+                    else
+                    {
+                        // Non-development fallback: use configured key material for signing.
+                        // Recommended production setup is certificate-backed signing/encryption keys.
+                        options.AddSigningKey(symmetricKey);
+                    }
 
                     options.UseAspNetCore()
                        .EnableAuthorizationEndpointPassthrough()

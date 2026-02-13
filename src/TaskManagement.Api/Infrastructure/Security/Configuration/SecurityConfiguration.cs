@@ -29,8 +29,17 @@ namespace TaskManagement.Api.Infrastructure.Security.Configuration
                 {
                     options.SetIssuer(publicIssuerUri);
                     options.AddAudiences(openIddictSettings.Audience);
-                    options.AddEncryptionKey(new SymmetricSecurityKey(
-                        Convert.FromBase64String(openIddictSettings.EncryptionKey)));
+                    var symmetricKey = new SymmetricSecurityKey(
+                        Convert.FromBase64String(openIddictSettings.EncryptionKey));
+
+                    options.AddEncryptionKey(symmetricKey);
+
+                    if (!environment.IsDevelopment())
+                    {
+                        // In non-development we allow shared-key token signature validation
+                        // for environments that are not yet certificate-backed.
+                        options.AddSigningKey(symmetricKey);
+                    }
                     options.UseSystemNetHttp()
                     .ConfigureHttpClientHandler(handler =>
                     {
