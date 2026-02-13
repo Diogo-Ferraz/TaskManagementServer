@@ -203,6 +203,19 @@ namespace TaskManagement.Auth.Features.Users
                     statusCode: StatusCodes.Status400BadRequest);
             }
 
+            if (!request.IsActive && await _userManager.IsInRoleAsync(user, Roles.Administrator))
+            {
+                var activeAdministrators = (await _userManager.GetUsersInRoleAsync(Roles.Administrator))
+                    .Count(u => IsUserActive(u, DateTimeOffset.UtcNow));
+
+                if (IsUserActive(user, DateTimeOffset.UtcNow) && activeAdministrators <= 1)
+                {
+                    return ValidationProblem(
+                        detail: "You cannot deactivate the last active administrator account.",
+                        statusCode: StatusCodes.Status400BadRequest);
+                }
+            }
+
             if (request.IsActive)
             {
                 user.LockoutEnabled = false;

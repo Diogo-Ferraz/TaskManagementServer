@@ -266,6 +266,67 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             }
         }
 
+        [Fact]
+        public async Task SetUserStatus_WhenWouldDeactivateLastActiveAdministrator_ShouldReturnBadRequest()
+        {
+            const string adminAEmail = "admin-a-users-test@example.com";
+            const string adminBEmail = "admin-b-users-test@example.com";
+            const string adminPassword = "StrongPassword@123";
+
+            var tokenA = await GetAdminAccessTokenAsync(adminAEmail, adminPassword);
+            var tokenB = await GetAdminAccessTokenAsync(adminBEmail, adminPassword);
+
+            string adminAId;
+            string adminBId;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var adminA = await userManager.FindByEmailAsync(adminAEmail);
+                var adminB = await userManager.FindByEmailAsync(adminBEmail);
+                adminA.Should().NotBeNull();
+                adminB.Should().NotBeNull();
+                adminAId = adminA!.Id;
+                adminBId = adminB!.Id;
+            }
+
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenB);
+            var deactivateAResponse = await _client.PatchAsJsonAsync($"/api/users/{adminAId}/status", new SetUserStatusRequest
+            {
+                IsActive = false
+            });
+            deactivateAResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var allAdmins = await userManager.GetUsersInRoleAsync(Roles.Administrator);
+                foreach (var admin in allAdmins.Where(a => !string.Equals(a.Id, adminBId, StringComparison.Ordinal)))
+                {
+                    admin.LockoutEnabled = true;
+                    admin.LockoutEnd = DateTimeOffset.MaxValue;
+                    admin.AccessFailedCount = 0;
+                    var updateResult = await userManager.UpdateAsync(admin);
+                    updateResult.Succeeded.Should().BeTrue();
+                }
+            }
+
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenA);
+            var deactivateBResponse = await _client.PatchAsJsonAsync($"/api/users/{adminBId}/status", new SetUserStatusRequest
+            {
+                IsActive = false
+            });
+            deactivateBResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var adminB = await userManager.FindByIdAsync(adminBId);
+                adminB.Should().NotBeNull();
+                adminB!.LockoutEnabled.Should().BeFalse();
+                adminB.LockoutEnd.Should().BeNull();
+            }
+        }
+
         private async Task<string> GetSeededUserIdAsync()
         {
             using var scope = _factory.Services.CreateScope();
@@ -280,25 +341,26 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
 
         private async Task<string> GetAccessTokenAsync(string email, string password)
         {
-            var authorizationResponse = await InitiateAuthorizationRequest(new AuthorizationParameters());
+            var authClient = _factory.CreateClientWithNoRedirects();
+            var authorizationResponse = await InitiateAuthorizationRequest(authClient, new AuthorizationParameters(Prompt: "login"));
 
             authorizationResponse.StatusCode.Should().Be(HttpStatusCode.Found);
-            authorizationResponse.Headers.Location?.OriginalString.Should().Contain(AuthorizationTestConfiguration.LoginPath);
-
-            var (loginResponse, _) = await PerformLogin(
-                authorizationResponse.Headers.Location?.OriginalString
-                    ?? throw new InvalidOperationException("Missing location header"),
-                email,
-                password);
-
-            loginResponse.StatusCode.Should().Be(HttpStatusCode.Found);
-
-            var nextLocation = loginResponse.Headers.Location?.ToString()
+            var nextLocation = authorizationResponse.Headers.Location?.ToString()
                 ?? throw new InvalidOperationException("Missing location header");
+
+            if (nextLocation.Contains(AuthorizationTestConfiguration.LoginPath, StringComparison.OrdinalIgnoreCase))
+            {
+                var (loginResponse, _) = await PerformLogin(authClient, nextLocation, email, password);
+
+                loginResponse.StatusCode.Should().Be(HttpStatusCode.Found);
+
+                nextLocation = loginResponse.Headers.Location?.ToString()
+                    ?? throw new InvalidOperationException("Missing location header");
+            }
 
             if (!nextLocation.Contains("code=", StringComparison.OrdinalIgnoreCase))
             {
-                var followResponse = await _client.GetAsync(nextLocation);
+                var followResponse = await authClient.GetAsync(nextLocation);
 
                 if (followResponse.StatusCode == HttpStatusCode.Found &&
                     followResponse.Headers.Location?.ToString().Contains("code=", StringComparison.OrdinalIgnoreCase) == true)
@@ -307,7 +369,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
                 }
                 else
                 {
-                    var consentResponse = await ProvideConsent(nextLocation);
+                    var consentResponse = await ProvideConsent(authClient, nextLocation);
                     consentResponse.StatusCode.Should().Be(HttpStatusCode.Found);
                     nextLocation = consentResponse.Headers.Location?.ToString()
                         ?? throw new InvalidOperationException("Missing location header");
@@ -318,7 +380,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
 
             var authorizationCode = ExtractAuthorizationCode(nextLocation);
 
-            var tokenResponse = await ExchangeCodeForTokens(authorizationCode);
+            var tokenResponse = await ExchangeCodeForTokens(authClient, authorizationCode);
             tokenResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
             var tokens = await AuthorizationTestHelpers.DeserializeTokenResponse(tokenResponse);
@@ -328,10 +390,10 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
         }
 
         private async Task<string> GetAdminAccessTokenAsync()
-        {
-            const string adminEmail = "admin-users-test@example.com";
-            const string adminPassword = "StrongPassword@123";
+            => await GetAdminAccessTokenAsync("admin-users-test@example.com", "StrongPassword@123");
 
+        private async Task<string> GetAdminAccessTokenAsync(string adminEmail, string adminPassword)
+        {
             using (var scope = _factory.Services.CreateScope())
             {
                 var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -373,7 +435,9 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             return await GetAccessTokenAsync(adminEmail, adminPassword);
         }
 
-        private async Task<HttpResponseMessage> InitiateAuthorizationRequest(AuthorizationParameters parameters)
+        private static async Task<HttpResponseMessage> InitiateAuthorizationRequest(
+            HttpClient client,
+            AuthorizationParameters parameters)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, AuthorizationTestConfiguration.AuthorizeEndpoint)
             {
@@ -387,22 +451,36 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
                 })
             };
 
-            return await _client.SendAsync(request);
+            if (!string.IsNullOrWhiteSpace(parameters.Prompt))
+            {
+                request.Content = AuthorizationTestHelpers.CreateTokenRequestContent(new Dictionary<string, string>
+                {
+                    ["client_id"] = parameters.ClientId,
+                    ["client_secret"] = parameters.ClientSecret,
+                    ["response_type"] = parameters.ResponseType,
+                    ["redirect_uri"] = parameters.RedirectUri,
+                    ["scope"] = parameters.Scope,
+                    ["prompt"] = parameters.Prompt
+                });
+            }
+
+            return await client.SendAsync(request);
         }
 
-        private async Task<(HttpResponseMessage Response, string? AntiForgeryToken)> PerformLogin(
+        private static async Task<(HttpResponseMessage Response, string? AntiForgeryToken)> PerformLogin(
+            HttpClient client,
             string loginPageUrl,
             string email = TestData.User.Email,
             string password = TestData.User.Password)
         {
-            var loginPageResponse = await _client.GetAsync(loginPageUrl);
+            var loginPageResponse = await client.GetAsync(loginPageUrl);
             var document = await HtmlHelpers.GetDocumentAsync(loginPageResponse);
             var loginForm = (IHtmlFormElement)document.QuerySelector("form")
                 ?? throw new InvalidOperationException("Login form not found");
 
             var antiForgeryToken = loginForm["__RequestVerificationToken"]?.GetAttribute("value");
 
-            var response = await _client.SendAsync(
+            var response = await client.SendAsync(
                 loginForm,
                 (HtmlElement)loginForm.QuerySelector("[type=submit]")
                     ?? throw new InvalidOperationException("Submit button not found"),
@@ -416,9 +494,9 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             return (response, antiForgeryToken);
         }
 
-        private async Task<HttpResponseMessage> ProvideConsent(string consentPageUrl)
+        private static async Task<HttpResponseMessage> ProvideConsent(HttpClient client, string consentPageUrl)
         {
-            var consentPageResponse = await _client.GetAsync(consentPageUrl);
+            var consentPageResponse = await client.GetAsync(consentPageUrl);
             var consentDocument = await HtmlHelpers.GetDocumentAsync(consentPageResponse);
             var consentForm = (IHtmlFormElement)consentDocument.QuerySelector("form[action='/connect/authorize']")
                 ?? throw new InvalidOperationException("Consent form not found");
@@ -426,7 +504,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             var submitButton = (HtmlElement)consentForm.QuerySelector("[name='submit.Accept']")
                 ?? throw new InvalidOperationException("Submit button not found");
 
-            var response = await _client.SendAsync(
+            var response = await client.SendAsync(
                 consentForm,
                 submitButton,
                 new Dictionary<string, string>
@@ -451,7 +529,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             return code;
         }
 
-        private async Task<HttpResponseMessage> ExchangeCodeForTokens(string code)
+        private static async Task<HttpResponseMessage> ExchangeCodeForTokens(HttpClient client, string code)
         {
             var tokenRequest = new HttpRequestMessage(HttpMethod.Post, AuthorizationTestConfiguration.TokenEndpoint)
             {
@@ -465,7 +543,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
                 })
             };
 
-            return await _client.SendAsync(tokenRequest);
+            return await client.SendAsync(tokenRequest);
         }
     }
 }

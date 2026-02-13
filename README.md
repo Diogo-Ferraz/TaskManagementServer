@@ -29,7 +29,13 @@ flowchart LR
 - OAuth2 / OpenID Connect via OpenIddict.
 - JWT validation in API service.
 - Role and resource-based authorization checks in handlers.
-- Auth user directory exposes `isActive` status; admin-only status toggle endpoint available in Auth service (`PATCH /api/users/{id}/status`).
+- Auth user directory exposes `isActive` status and user roles.
+- Admin-only user management endpoints in Auth service:
+  - `GET /api/users` with `search`, `isActive`, and `role` filters (paged).
+  - `PATCH /api/users/{id}/status` to activate/deactivate users.
+- Safety guards:
+  - Admins cannot deactivate themselves.
+  - The last active administrator cannot be deactivated.
 
 ### Project Management
 - Create, update, delete, and read projects.
