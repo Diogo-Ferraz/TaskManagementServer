@@ -71,6 +71,34 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
         }
 
         [Fact]
+        public async Task GetUserDetailsById_WhenAdmin_ShouldReturnDetails()
+        {
+            var userId = await GetSeededUserIdAsync();
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users/{userId}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var details = await response.Content.ReadFromJsonAsync<UserDetailsDto>();
+            details.Should().NotBeNull();
+            details!.Id.Should().Be(userId);
+            details.Email.Should().Be(TestData.User.Email);
+            details.Roles.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenNotAdmin_ShouldReturnForbidden()
+        {
+            var userId = await GetSeededUserIdAsync();
+            var token = await GetAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users/{userId}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
         public async Task GetUsers_WithSearch_ShouldReturnMatchingUsers()
         {
             var token = await GetAccessTokenAsync();

@@ -34,6 +34,9 @@ Legacy compatibility:
   - self-deactivation is blocked.
   - deactivating the last active administrator is blocked.
 
+`GET /api/users/{id}/details` (admin-only):
+- Includes richer profile fields for admin UI (roles, confirmations, lockout, failed access count, MFA flag).
+
 ## Task Filters
 
 `GET /api/taskitems` supports:

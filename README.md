@@ -32,6 +32,7 @@ flowchart LR
 - Auth user directory exposes `isActive` status and user roles.
 - Admin-only user management endpoints in Auth service:
   - `GET /api/users` with `search`, `isActive`, and `role` filters (paged).
+  - `GET /api/users/{id}/details` for richer admin user profile data.
   - `PATCH /api/users/{id}/status` to activate/deactivate users.
 - Safety guards:
   - Admins cannot deactivate themselves.

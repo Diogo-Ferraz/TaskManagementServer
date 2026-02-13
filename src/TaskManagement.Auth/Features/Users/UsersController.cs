@@ -168,6 +168,51 @@ namespace TaskManagement.Auth.Features.Users
         }
 
         /// <summary>
+        /// Retrieves detailed user information by ID for administrative user management.
+        /// </summary>
+        /// <param name="id">The user ID.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The detailed user information.</returns>
+        [Authorize(
+            AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+            Roles = Roles.Administrator)]
+        [HttpGet("{id}/details")]
+        public async Task<ActionResult<UserDetailsDto>> GetUserDetailsById(string id, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return BadRequest();
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var user = await _userManager.Users
+                .SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
+
+            if (user is null)
+            {
+                return NotFound();
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return Ok(new UserDetailsDto
+            {
+                Id = user.Id,
+                DisplayName = user.DisplayName,
+                UserName = user.UserName,
+                Email = user.Email,
+                IsActive = IsUserActive(user, now),
+                EmailConfirmed = user.EmailConfirmed,
+                PhoneNumber = user.PhoneNumber,
+                PhoneNumberConfirmed = user.PhoneNumberConfirmed,
+                TwoFactorEnabled = user.TwoFactorEnabled,
+                LockoutEnd = user.LockoutEnd,
+                AccessFailedCount = user.AccessFailedCount,
+                Roles = roles.ToList()
+            });
+        }
+
+        /// <summary>
         /// Activates or deactivates a user account.
         /// </summary>
         /// <param name="id">The target user ID.</param>
