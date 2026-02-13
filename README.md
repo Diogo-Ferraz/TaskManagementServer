@@ -97,6 +97,7 @@ High-level role intent:
 For endpoint-level details, see:
 - [API Role Matrix](docs/ROLE_MATRIX.md)
 - [API Filters and Patch Guide](docs/API_FILTERS_AND_PATCH.md)
+- [API Error Contract](docs/API_ERROR_CONTRACT.md)
 
 ---
 

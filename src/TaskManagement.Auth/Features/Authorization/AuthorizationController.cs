@@ -246,6 +246,7 @@ namespace TaskManagement.Auth.Features.Authorization
         /// <returns>The token response.</returns>
         [HttpPost("~/connect/token"), IgnoreAntiforgeryToken, Produces("application/json")]
         [EnableRateLimiting(RateLimitingPolicies.TokenExchange)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<IActionResult> Exchange()
         {
             var request = HttpContext.GetOpenIddictServerRequest() ??

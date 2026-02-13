@@ -27,6 +27,7 @@ namespace TaskManagement.Auth.Infrastructure.Common.Configuration
                 }
 
                 options.OperationFilter<AdminUsersExamplesOperationFilter>();
+                options.OperationFilter<ProblemDetailsExamplesOperationFilter>();
 
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {

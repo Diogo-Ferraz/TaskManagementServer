@@ -61,6 +61,7 @@ namespace TaskManagement.Auth.Features.Users
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<UserListResponse>> GetUsers(
             [FromQuery] string? search,
             [FromQuery] bool? isActive,
@@ -204,6 +205,7 @@ namespace TaskManagement.Auth.Features.Users
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<ActionResult<UserDetailsDto>> GetUserDetailsById(string id, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(id))
@@ -258,6 +260,7 @@ namespace TaskManagement.Auth.Features.Users
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<IActionResult> SetUserStatus(
             string id,
             [FromBody] SetUserStatusRequest request,
