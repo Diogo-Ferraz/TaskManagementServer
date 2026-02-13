@@ -85,6 +85,8 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             details!.Id.Should().Be(userId);
             details.Email.Should().Be(TestData.User.Email);
             details.Roles.Should().NotBeNull();
+            details.EmailConfirmed.Should().BeTrue();
+            details.IsActive.Should().BeTrue();
         }
 
         [Fact]
@@ -96,6 +98,72 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
 
             var response = await _client.GetAsync($"/api/users/{userId}/details");
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenUnauthenticated_ShouldReturnUnauthorized()
+        {
+            var userId = await GetSeededUserIdAsync();
+            _client.DefaultRequestHeaders.Authorization = null;
+
+            var response = await _client.GetAsync($"/api/users/{userId}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenNotFound_ShouldReturnNotFound()
+        {
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users/{Guid.NewGuid()}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenIdIsWhitespace_ShouldReturnBadRequest()
+        {
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync("/api/users/%20/details");
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        [Fact]
+        public async Task GetUserDetailsById_WhenUserIsInactive_ShouldReturnIsActiveFalse()
+        {
+            string userId;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var user = new ApplicationUser
+                {
+                    UserName = $"details-inactive-{Guid.NewGuid():N}@example.com",
+                    Email = $"details-inactive-{Guid.NewGuid():N}@example.com",
+                    EmailConfirmed = true
+                };
+
+                var createResult = await userManager.CreateAsync(user, "StrongPassword@123");
+                createResult.Succeeded.Should().BeTrue();
+                userId = user.Id;
+
+                user.LockoutEnabled = true;
+                user.LockoutEnd = DateTimeOffset.MaxValue;
+                var updateResult = await userManager.UpdateAsync(user);
+                updateResult.Succeeded.Should().BeTrue();
+            }
+
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users/{userId}/details");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var details = await response.Content.ReadFromJsonAsync<UserDetailsDto>();
+            details.Should().NotBeNull();
+            details!.Id.Should().Be(userId);
+            details.IsActive.Should().BeFalse();
         }
 
         [Fact]
