@@ -1,4 +1,4 @@
-﻿namespace TaskManagement.Auth.Features.Users.Models
+namespace TaskManagement.Auth.Features.Users.Models
 {
     public class UserSummaryDto
     {
@@ -6,5 +6,6 @@
         public string? DisplayName { get; set; }
         public string? UserName { get; set; }
         public string? Email { get; set; }
+        public bool IsActive { get; set; }
     }
 }

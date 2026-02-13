@@ -29,12 +29,14 @@ flowchart LR
 - OAuth2 / OpenID Connect via OpenIddict.
 - JWT validation in API service.
 - Role and resource-based authorization checks in handlers.
+- Auth user directory exposes `isActive` status; admin-only status toggle endpoint available in Auth service (`PATCH /api/users/{id}/status`).
 
 ### Project Management
 - Create, update, delete, and read projects.
 - Partial updates via `PATCH /api/projects/{id}`.
 - Project membership tracking (`ProjectMember`) with audit fields.
 - Project members listing endpoint with display names.
+- Inactive users are surfaced in display names as `Name (Inactive)` when resolved from user directory.
 
 ### Task Management
 - Create, update, delete, and read task items.

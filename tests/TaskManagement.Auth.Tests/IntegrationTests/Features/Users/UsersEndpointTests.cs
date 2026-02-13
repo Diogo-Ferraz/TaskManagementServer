@@ -55,6 +55,7 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             user.Should().NotBeNull();
             user!.Id.Should().Be(userId);
             user.Email.Should().Be(TestData.User.Email);
+            user.IsActive.Should().BeTrue();
         }
 
         [Fact]
@@ -80,6 +81,21 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             list.Should().NotBeNull();
             list!.Total.Should().BeGreaterThan(0);
             list.Items.Should().ContainSingle(u => u.Email == TestData.User.Email);
+        }
+
+        [Fact]
+        public async Task SetUserStatus_WhenAuthenticatedButNotAdmin_ShouldReturnForbidden()
+        {
+            var userId = await GetSeededUserIdAsync();
+            var token = await GetAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.PatchAsJsonAsync($"/api/users/{userId}/status", new SetUserStatusRequest
+            {
+                IsActive = false
+            });
+
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         }
 
         private async Task<string> GetSeededUserIdAsync()

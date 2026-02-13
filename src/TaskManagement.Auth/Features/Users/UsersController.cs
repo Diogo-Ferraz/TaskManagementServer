@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
 using TaskManagement.Auth.Features.Identity.Models;
 using TaskManagement.Auth.Features.Users.Models;
+using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Auth.Features.Users
 {
@@ -42,6 +43,7 @@ namespace TaskManagement.Auth.Features.Users
             [FromQuery] int? take,
             CancellationToken cancellationToken)
         {
+            var now = DateTimeOffset.UtcNow;
             var query = _userManager.Users.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -67,7 +69,8 @@ namespace TaskManagement.Auth.Features.Users
                     Id = u.Id,
                     DisplayName = u.DisplayName,
                     UserName = u.UserName,
-                    Email = u.Email
+                    Email = u.Email,
+                    IsActive = !u.LockoutEnabled || !u.LockoutEnd.HasValue || u.LockoutEnd <= now
                 })
                 .ToListAsync(cancellationToken);
 
@@ -95,6 +98,7 @@ namespace TaskManagement.Auth.Features.Users
                 return BadRequest();
             }
 
+            var now = DateTimeOffset.UtcNow;
             var user = await _userManager.Users.AsNoTracking()
                 .Where(u => u.Id == id)
                 .Select(u => new UserSummaryDto
@@ -102,7 +106,8 @@ namespace TaskManagement.Auth.Features.Users
                     Id = u.Id,
                     DisplayName = u.DisplayName,
                     UserName = u.UserName,
-                    Email = u.Email
+                    Email = u.Email,
+                    IsActive = !u.LockoutEnabled || !u.LockoutEnd.HasValue || u.LockoutEnd <= now
                 })
                 .SingleOrDefaultAsync(cancellationToken);
 
@@ -112,6 +117,56 @@ namespace TaskManagement.Auth.Features.Users
             }
 
             return Ok(user);
+        }
+
+        /// <summary>
+        /// Activates or deactivates a user account.
+        /// </summary>
+        /// <param name="id">The target user ID.</param>
+        /// <param name="request">Desired account status.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [Authorize(
+            AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+            Roles = Roles.Administrator)]
+        [HttpPatch("{id}/status")]
+        public async Task<IActionResult> SetUserStatus(
+            string id,
+            [FromBody] SetUserStatusRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return BadRequest();
+            }
+
+            var user = await _userManager.FindByIdAsync(id);
+            if (user is null)
+            {
+                return NotFound();
+            }
+
+            if (request.IsActive)
+            {
+                user.LockoutEnabled = false;
+                user.LockoutEnd = null;
+                user.AccessFailedCount = 0;
+            }
+            else
+            {
+                user.LockoutEnabled = true;
+                user.LockoutEnd = DateTimeOffset.MaxValue;
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                return ValidationProblem(
+                    detail: string.Join("; ", result.Errors.Select(e => e.Description)),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return NoContent();
         }
     }
 }
