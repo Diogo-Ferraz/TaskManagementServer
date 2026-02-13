@@ -61,7 +61,7 @@ namespace TaskManagement.Auth.Features.Authorization.Configuration
                         Convert.FromBase64String(openIddictSettings.EncryptionKey));
                     options.AddEncryptionKey(symmetricKey);
 
-                    if (builder.Environment.IsDevelopment())
+                    if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"))
                     {
                         options.AddDevelopmentEncryptionCertificate()
                            .AddDevelopmentSigningCertificate();
