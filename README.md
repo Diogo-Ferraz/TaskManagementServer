@@ -138,7 +138,7 @@ Benefits:
 - OpenIddict authorization server
 - ASP.NET Identity user and role management
 - Authorization Code + PKCE support
-- Issues access and refresh tokens
+- Issues tokens via Authorization Code + PKCE
 
 ### `TaskManagement.Api`
 - Projects, TaskItems, Activity features
