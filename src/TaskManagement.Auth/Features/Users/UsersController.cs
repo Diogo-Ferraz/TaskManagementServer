@@ -25,16 +25,19 @@ namespace TaskManagement.Auth.Features.Users
 
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly ILogger<UsersController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UsersController"/> class.
         /// </summary>
         public UsersController(
             UserManager<ApplicationUser> userManager,
-            RoleManager<IdentityRole> roleManager)
+            RoleManager<IdentityRole> roleManager,
+            ILogger<UsersController> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
+            _logger = logger;
         }
 
         /// <summary>
@@ -278,10 +281,15 @@ namespace TaskManagement.Auth.Features.Users
             }
 
             var currentUserId = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var wasActive = IsUserActive(user, DateTimeOffset.UtcNow);
             if (!request.IsActive &&
                 !string.IsNullOrWhiteSpace(currentUserId) &&
                 string.Equals(currentUserId, id, StringComparison.Ordinal))
             {
+                _logger.LogWarning(
+                    "AUDIT user-status-change blocked: self-deactivation. ActorUserId={ActorUserId}, TargetUserId={TargetUserId}",
+                    currentUserId,
+                    id);
                 return ValidationProblem(
                     detail: "Administrators cannot deactivate their own account.",
                     statusCode: StatusCodes.Status400BadRequest);
@@ -294,6 +302,10 @@ namespace TaskManagement.Auth.Features.Users
 
                 if (IsUserActive(user, DateTimeOffset.UtcNow) && activeAdministrators <= 1)
                 {
+                    _logger.LogWarning(
+                        "AUDIT user-status-change blocked: last-active-admin protection. ActorUserId={ActorUserId}, TargetUserId={TargetUserId}",
+                        currentUserId,
+                        id);
                     return ValidationProblem(
                         detail: "You cannot deactivate the last active administrator account.",
                         statusCode: StatusCodes.Status400BadRequest);
@@ -315,10 +327,25 @@ namespace TaskManagement.Auth.Features.Users
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
+                var errorMessage = string.Join("; ", result.Errors.Select(e => e.Description));
+                _logger.LogWarning(
+                    "AUDIT user-status-change failed. ActorUserId={ActorUserId}, TargetUserId={TargetUserId}, WasActive={WasActive}, RequestedIsActive={RequestedIsActive}, Errors={Errors}",
+                    currentUserId,
+                    id,
+                    wasActive,
+                    request.IsActive,
+                    errorMessage);
                 return ValidationProblem(
-                    detail: string.Join("; ", result.Errors.Select(e => e.Description)),
+                    detail: errorMessage,
                     statusCode: StatusCodes.Status400BadRequest);
             }
+
+            _logger.LogInformation(
+                "AUDIT user-status-change succeeded. ActorUserId={ActorUserId}, TargetUserId={TargetUserId}, WasActive={WasActive}, IsActive={IsActive}",
+                currentUserId,
+                id,
+                wasActive,
+                request.IsActive);
 
             cancellationToken.ThrowIfCancellationRequested();
             return NoContent();
