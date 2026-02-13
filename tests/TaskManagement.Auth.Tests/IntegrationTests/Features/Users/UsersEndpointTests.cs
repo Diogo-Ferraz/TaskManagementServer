@@ -138,6 +138,48 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
         }
 
         [Fact]
+        public async Task GetUsers_WithRoleFilter_ShouldReturnOnlyMatchingRole()
+        {
+            var managedUserEmail = $"pm-{Guid.NewGuid():N}@example.com";
+            var managedUserId = string.Empty;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+                if (!await roleManager.RoleExistsAsync(Roles.ProjectManager))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(Roles.ProjectManager));
+                }
+
+                var user = new ApplicationUser
+                {
+                    UserName = managedUserEmail,
+                    Email = managedUserEmail,
+                    EmailConfirmed = true
+                };
+
+                var createResult = await userManager.CreateAsync(user, "StrongPassword@123");
+                createResult.Succeeded.Should().BeTrue();
+
+                managedUserId = user.Id;
+                var addRoleResult = await userManager.AddToRoleAsync(user, Roles.ProjectManager);
+                addRoleResult.Succeeded.Should().BeTrue();
+            }
+
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users?role={Roles.ProjectManager}");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var list = await response.Content.ReadFromJsonAsync<UserListResponse>();
+            list.Should().NotBeNull();
+            list!.Items.Should().Contain(u => u.Id == managedUserId);
+            list.Items.Should().OnlyContain(u => u.Roles.Contains(Roles.ProjectManager));
+        }
+
+        [Fact]
         public async Task SetUserStatus_WhenAuthenticatedButNotAdmin_ShouldReturnForbidden()
         {
             var userId = await GetSeededUserIdAsync();

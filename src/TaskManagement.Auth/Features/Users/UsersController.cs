@@ -21,18 +21,25 @@ namespace TaskManagement.Auth.Features.Users
         private const int MaxPageSize = 100;
 
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UsersController"/> class.
         /// </summary>
-        public UsersController(UserManager<ApplicationUser> userManager)
-            => _userManager = userManager;
+        public UsersController(
+            UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole> roleManager)
+        {
+            _userManager = userManager;
+            _roleManager = roleManager;
+        }
 
         /// <summary>
         /// Retrieves a paged list of users with optional search.
         /// </summary>
         /// <param name="search">Optional search term applied to display name, email, or username.</param>
         /// <param name="isActive">Optional status filter.</param>
+        /// <param name="role">Optional role filter.</param>
         /// <param name="page">Optional 1-based page number.</param>
         /// <param name="pageSize">Optional page size (max 100).</param>
         /// <param name="skip">Optional number of records to skip.</param>
@@ -46,6 +53,7 @@ namespace TaskManagement.Auth.Features.Users
         public async Task<ActionResult<UserListResponse>> GetUsers(
             [FromQuery] string? search,
             [FromQuery] bool? isActive,
+            [FromQuery] string? role,
             [FromQuery] int? page,
             [FromQuery] int? pageSize,
             [FromQuery] int? skip,
@@ -68,6 +76,21 @@ namespace TaskManagement.Auth.Features.Users
             {
                 query = query.Where(u =>
                     (!u.LockoutEnabled || !u.LockoutEnd.HasValue || u.LockoutEnd <= now) == isActive.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                var normalizedRole = role.Trim();
+                if (!await _roleManager.RoleExistsAsync(normalizedRole))
+                {
+                    return ValidationProblem(
+                        detail: $"Role '{normalizedRole}' does not exist.",
+                        statusCode: StatusCodes.Status400BadRequest);
+                }
+
+                var usersInRole = await _userManager.GetUsersInRoleAsync(normalizedRole);
+                var userIdsInRole = usersInRole.Select(u => u.Id).ToList();
+                query = query.Where(u => userIdsInRole.Contains(u.Id));
             }
 
             var total = await query.CountAsync(cancellationToken);
