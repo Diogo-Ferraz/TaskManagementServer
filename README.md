@@ -37,6 +37,9 @@ flowchart LR
 - Safety guards:
   - Admins cannot deactivate themselves.
   - The last active administrator cannot be deactivated.
+- Rate limiting on sensitive auth/admin operations:
+  - `POST /connect/token`
+  - Admin user-management endpoints (`GET /api/users`, `GET /api/users/{id}/details`, `PATCH /api/users/{id}/status`)
 
 ### Project Management
 - Create, update, delete, and read projects.

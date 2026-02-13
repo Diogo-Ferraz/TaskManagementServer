@@ -1,12 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
 using System.Security.Claims;
 using Swashbuckle.AspNetCore.Annotations;
 using TaskManagement.Auth.Features.Identity.Models;
 using TaskManagement.Auth.Features.Users.Models;
+using TaskManagement.Auth.Infrastructure.Common.Settings;
 using TaskManagement.Shared.Models;
 
 namespace TaskManagement.Auth.Features.Users
@@ -50,6 +52,7 @@ namespace TaskManagement.Auth.Features.Users
         [Authorize(
             AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
             Roles = Roles.Administrator)]
+        [EnableRateLimiting(RateLimitingPolicies.AdminUserManagement)]
         [HttpGet]
         [SwaggerOperation(
             Summary = "List users (admin)",
@@ -191,6 +194,7 @@ namespace TaskManagement.Auth.Features.Users
         [Authorize(
             AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
             Roles = Roles.Administrator)]
+        [EnableRateLimiting(RateLimitingPolicies.AdminUserManagement)]
         [HttpGet("{id}/details")]
         [SwaggerOperation(
             Summary = "Get user details (admin)",
@@ -244,6 +248,7 @@ namespace TaskManagement.Auth.Features.Users
         [Authorize(
             AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
             Roles = Roles.Administrator)]
+        [EnableRateLimiting(RateLimitingPolicies.AdminUserManagement)]
         [HttpPatch("{id}/status")]
         [SwaggerOperation(
             Summary = "Set user active status (admin)",

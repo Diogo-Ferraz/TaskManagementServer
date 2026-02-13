@@ -37,6 +37,7 @@ namespace TaskManagement.Auth.Infrastructure.Common.Configuration
             app.UseStaticFiles();
             app.UseCors();
             app.UseRouting();
+            app.UseRateLimiter();
             app.UseAuthentication();
             app.UseAuthorization();
 
