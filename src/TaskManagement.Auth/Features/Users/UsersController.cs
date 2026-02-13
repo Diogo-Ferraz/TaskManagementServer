@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
+using System.Security.Claims;
 using TaskManagement.Auth.Features.Identity.Models;
 using TaskManagement.Auth.Features.Users.Models;
 using TaskManagement.Shared.Models;
@@ -167,6 +168,16 @@ namespace TaskManagement.Auth.Features.Users
             if (user is null)
             {
                 return NotFound();
+            }
+
+            var currentUserId = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!request.IsActive &&
+                !string.IsNullOrWhiteSpace(currentUserId) &&
+                string.Equals(currentUserId, id, StringComparison.Ordinal))
+            {
+                return ValidationProblem(
+                    detail: "Administrators cannot deactivate their own account.",
+                    statusCode: StatusCodes.Status400BadRequest);
             }
 
             if (request.IsActive)

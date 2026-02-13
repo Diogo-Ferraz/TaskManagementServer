@@ -190,6 +190,40 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
             }
         }
 
+        [Fact]
+        public async Task SetUserStatus_WhenAdminDeactivatesSelf_ShouldReturnBadRequest()
+        {
+            const string adminEmail = "admin-users-test@example.com";
+
+            var token = await GetAdminAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            string adminUserId;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var adminUser = await userManager.FindByEmailAsync(adminEmail);
+                adminUser.Should().NotBeNull();
+                adminUserId = adminUser!.Id;
+            }
+
+            var response = await _client.PatchAsJsonAsync($"/api/users/{adminUserId}/status", new SetUserStatusRequest
+            {
+                IsActive = false
+            });
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var adminUser = await userManager.FindByIdAsync(adminUserId);
+                adminUser.Should().NotBeNull();
+                adminUser!.LockoutEnabled.Should().BeFalse();
+                adminUser.LockoutEnd.Should().BeNull();
+            }
+        }
+
         private async Task<string> GetSeededUserIdAsync()
         {
             using var scope = _factory.Services.CreateScope();
@@ -282,6 +316,15 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
                 if (!await userManager.IsInRoleAsync(adminUser, Roles.Administrator))
                 {
                     await userManager.AddToRoleAsync(adminUser, Roles.Administrator);
+                }
+
+                if (adminUser.LockoutEnabled || adminUser.LockoutEnd.HasValue)
+                {
+                    adminUser.LockoutEnabled = false;
+                    adminUser.LockoutEnd = null;
+                    adminUser.AccessFailedCount = 0;
+                    var updateResult = await userManager.UpdateAsync(adminUser);
+                    updateResult.Succeeded.Should().BeTrue();
                 }
             }
 
