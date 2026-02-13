@@ -84,6 +84,47 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
         }
 
         [Fact]
+        public async Task GetUsers_WithIsActiveFilter_ShouldReturnOnlyMatchingUsers()
+        {
+            var userId = string.Empty;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+                var uniqueEmail = $"inactive-{Guid.NewGuid():N}@example.com";
+                var user = new ApplicationUser
+                {
+                    UserName = uniqueEmail,
+                    Email = uniqueEmail,
+                    EmailConfirmed = true
+                };
+
+                var createResult = await userManager.CreateAsync(user, "StrongPassword@123");
+                createResult.Succeeded.Should().BeTrue();
+
+                userId = user.Id;
+                user.LockoutEnabled = true;
+                user.LockoutEnd = DateTimeOffset.MaxValue;
+                await userManager.UpdateAsync(user);
+            }
+
+            var token = await GetAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var inactiveResponse = await _client.GetAsync("/api/users?isActive=false");
+            inactiveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var inactiveList = await inactiveResponse.Content.ReadFromJsonAsync<UserListResponse>();
+            inactiveList.Should().NotBeNull();
+            inactiveList!.Items.Should().Contain(u => u.Id == userId && !u.IsActive);
+
+            var activeResponse = await _client.GetAsync("/api/users?isActive=true");
+            activeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var activeList = await activeResponse.Content.ReadFromJsonAsync<UserListResponse>();
+            activeList.Should().NotBeNull();
+            activeList!.Items.Should().NotContain(u => u.Id == userId);
+        }
+
+        [Fact]
         public async Task SetUserStatus_WhenAuthenticatedButNotAdmin_ShouldReturnForbidden()
         {
             var userId = await GetSeededUserIdAsync();

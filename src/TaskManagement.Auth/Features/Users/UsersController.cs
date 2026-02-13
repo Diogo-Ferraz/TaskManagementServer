@@ -31,6 +31,9 @@ namespace TaskManagement.Auth.Features.Users
         /// Retrieves a paged list of users with optional search.
         /// </summary>
         /// <param name="search">Optional search term applied to display name, email, or username.</param>
+        /// <param name="isActive">Optional status filter.</param>
+        /// <param name="page">Optional 1-based page number.</param>
+        /// <param name="pageSize">Optional page size (max 100).</param>
         /// <param name="skip">Optional number of records to skip.</param>
         /// <param name="take">Optional number of records to take.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
@@ -39,6 +42,9 @@ namespace TaskManagement.Auth.Features.Users
         [HttpGet]
         public async Task<ActionResult<UserListResponse>> GetUsers(
             [FromQuery] string? search,
+            [FromQuery] bool? isActive,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
             [FromQuery] int? skip,
             [FromQuery] int? take,
             CancellationToken cancellationToken)
@@ -55,15 +61,23 @@ namespace TaskManagement.Auth.Features.Users
                     (u.UserName ?? string.Empty).Contains(term));
             }
 
+            if (isActive.HasValue)
+            {
+                query = query.Where(u =>
+                    (!u.LockoutEnabled || !u.LockoutEnd.HasValue || u.LockoutEnd <= now) == isActive.Value);
+            }
+
             var total = await query.CountAsync(cancellationToken);
-            var pageSize = Math.Clamp(take ?? DefaultPageSize, 1, MaxPageSize);
-            var offset = Math.Max(skip ?? 0, 0);
+            var effectivePageSize = Math.Clamp(pageSize ?? take ?? DefaultPageSize, 1, MaxPageSize);
+            var offset = page.HasValue
+                ? Math.Max(page.Value - 1, 0) * effectivePageSize
+                : Math.Max(skip ?? 0, 0);
 
             var items = await query
                 .OrderBy(u => u.DisplayName ?? u.UserName ?? u.Email ?? string.Empty)
                 .ThenBy(u => u.Id)
                 .Skip(offset)
-                .Take(pageSize)
+                .Take(effectivePageSize)
                 .Select(u => new UserSummaryDto
                 {
                     Id = u.Id,
@@ -78,7 +92,7 @@ namespace TaskManagement.Auth.Features.Users
             {
                 Total = total,
                 Skip = offset,
-                Take = pageSize,
+                Take = effectivePageSize,
                 Items = items
             });
         }
