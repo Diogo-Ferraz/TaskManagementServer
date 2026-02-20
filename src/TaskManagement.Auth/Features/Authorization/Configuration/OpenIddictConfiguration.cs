@@ -53,7 +53,20 @@ namespace TaskManagement.Auth.Features.Authorization.Configuration
                        .SetIssuer(new Uri(openIddictSettings.Issuer))
                        .SetUserInfoEndpointUris("connect/userinfo");
 
-                    options.RegisterScopes(Scopes.Email, Scopes.Profile, Scopes.Roles);
+                    var configuredScopes = builder.Configuration
+                        .GetSection("ClientSettings:Clients")
+                        .Get<ClientSettingsOptions[]>()?
+                        .SelectMany(client => client.AllowedScopes)
+                        .Where(scope => !string.IsNullOrWhiteSpace(scope))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToArray() ?? [];
+
+                    var registeredScopes = new[] { Scopes.Email, Scopes.Profile, Scopes.Roles }
+                        .Concat(configuredScopes)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+
+                    options.RegisterScopes(registeredScopes);
 
                     options.AllowAuthorizationCodeFlow();
 
@@ -93,6 +106,7 @@ namespace TaskManagement.Auth.Features.Authorization.Configuration
 
             // Register the worker responsible for seeding the database.
             // Note: in a real world application, this step should be part of a setup script.
+            services.AddHostedService<OpenIddictScopeSeeder>();
             services.AddHostedService<OpenIddictClientSeeder>();
 
             return services;
