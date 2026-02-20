@@ -95,7 +95,9 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             await _dbContext.SaveChangesAsync(cancellationToken);
             await _activityPublisher.PublishAsync(activityLog, cancellationToken);
 
-            return _mapper.Map<TaskItemDto>(taskItem);
+            var result = _mapper.Map<TaskItemDto>(taskItem);
+            result.AssignedUserName = await ResolveAssigneeDisplayNameAsync(taskItem.AssignedUserId, cancellationToken);
+            return result;
         }
 
         private static string? NormalizeAssignedUserId(string? assignedUserId)
@@ -128,6 +130,17 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             };
             project.Members.Add(member);
             dbContext.ProjectMembers.Add(member);
+        }
+
+        private async Task<string> ResolveAssigneeDisplayNameAsync(string? assignedUserId, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(assignedUserId))
+            {
+                return "Unassigned";
+            }
+
+            var displayName = await _userDirectoryService.GetDisplayNameAsync(assignedUserId, cancellationToken);
+            return string.IsNullOrWhiteSpace(displayName) ? assignedUserId : displayName;
         }
     }
 }

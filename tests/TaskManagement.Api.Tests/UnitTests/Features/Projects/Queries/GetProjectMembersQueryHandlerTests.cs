@@ -6,6 +6,7 @@ using TaskManagement.Api.Features.Projects.Queries;
 using TaskManagement.Api.Features.Projects.Queries.Handlers;
 using TaskManagement.Api.Features.Projects.Services.Interfaces;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
+using TaskManagement.Api.Features.Users.Services.Models;
 using TaskManagement.Api.Infrastructure.Persistence;
 using TaskManagement.Api.Infrastructure.Persistence.Models;
 using TaskManagement.Shared.Models;
@@ -47,11 +48,11 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Queries
                 .Setup(x => x.IsMemberAsync(_projectId, MemberUserId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
             _mockUserDirectoryService
-                .Setup(x => x.GetDisplayNameAsync(OwnerUserId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync("Owner Display");
+                .Setup(x => x.GetUserSummaryAsync(OwnerUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UserDirectorySummary { DisplayName = "Owner Display", Email = "owner@example.com" });
             _mockUserDirectoryService
-                .Setup(x => x.GetDisplayNameAsync(MemberUserId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync("Member Display");
+                .Setup(x => x.GetUserSummaryAsync(MemberUserId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UserDirectorySummary { DisplayName = "Member Display", Email = "member@example.com" });
 
             var handler = new GetProjectMembersQueryHandler(
                 _dbContext,

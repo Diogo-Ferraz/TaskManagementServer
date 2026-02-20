@@ -105,8 +105,8 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             var activity = await db.ActivityLogs
                 .FirstOrDefaultAsync(a => a.TaskItemId == _taskId && a.Type == ActivityType.TaskAssigneeChanged);
             activity.Should().NotBeNull();
-            activity!.OldValue.Should().Be(_memberUserId);
-            activity.NewValue.Should().BeNull();
+            activity!.OldValue.Should().Be($"Test User {_memberUserId}");
+            activity.NewValue.Should().Be("Unassigned");
         }
 
         [Fact]

@@ -90,6 +90,11 @@ namespace TaskManagement.Api.Features.Activity.Queries.Handlers
                 }
             }
 
+            if (request.MineOnly)
+            {
+                query = query.Where(activity => activity.CreatedByUserId == currentUserId);
+            }
+
             var activityLogs = await query
                 .OrderByDescending(activity => activity.CreatedAt)
                 .Skip((page - 1) * pageSize)

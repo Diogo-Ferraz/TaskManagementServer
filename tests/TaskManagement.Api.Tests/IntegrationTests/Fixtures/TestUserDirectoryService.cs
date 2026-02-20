@@ -1,4 +1,5 @@
 ﻿using TaskManagement.Api.Features.Users.Services.Interfaces;
+using TaskManagement.Api.Features.Users.Services.Models;
 
 namespace TaskManagement.Api.Tests.IntegrationTests.Fixtures
 {
@@ -17,6 +18,20 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Fixtures
             }
 
             return Task.FromResult<string?>($"Test User {userId}");
+        }
+
+        public Task<UserDirectorySummary?> GetUserSummaryAsync(string userId, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Task.FromResult<UserDirectorySummary?>(null);
+            }
+
+            return Task.FromResult<UserDirectorySummary?>(new UserDirectorySummary
+            {
+                DisplayName = $"Test User {userId}",
+                Email = $"{userId}@example.test"
+            });
         }
     }
 }

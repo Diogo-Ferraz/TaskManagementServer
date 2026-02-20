@@ -60,23 +60,24 @@ namespace TaskManagement.Api.Features.Projects.Queries.Handlers
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             members.Add(project.OwnerUserId);
 
-            var displayNameEntries = await Task.WhenAll(
+            var userSummaryEntries = await Task.WhenAll(
                 members.Select(async userId => new
                 {
                     UserId = userId,
-                    DisplayName = await _userDirectoryService.GetDisplayNameAsync(userId, cancellationToken)
+                    UserSummary = await _userDirectoryService.GetUserSummaryAsync(userId, cancellationToken)
                 }));
 
-            var displayNames = displayNameEntries.ToDictionary(
+            var userSummaries = userSummaryEntries.ToDictionary(
                 entry => entry.UserId,
-                entry => entry.DisplayName,
+                entry => entry.UserSummary,
                 StringComparer.OrdinalIgnoreCase);
 
             var result = members
                 .Select(userId => new ProjectMemberDto
                 {
                     UserId = userId,
-                    DisplayName = displayNames[userId] ?? userId,
+                    DisplayName = userSummaries[userId]?.DisplayName ?? userId,
+                    Email = userSummaries[userId]?.Email,
                     IsOwner = string.Equals(userId, project.OwnerUserId, StringComparison.OrdinalIgnoreCase)
                 })
                 .OrderByDescending(member => member.IsOwner)

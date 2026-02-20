@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using TaskManagement.Api.Features.Users.Services.Interfaces;
+using TaskManagement.Api.Features.Users.Services.Models;
 
 namespace TaskManagement.Api.Features.Users.Services
 {
@@ -41,6 +42,12 @@ namespace TaskManagement.Api.Features.Users.Services
 
         public async Task<string?> GetDisplayNameAsync(string userId, CancellationToken cancellationToken)
         {
+            var userSummary = await GetUserSummaryAsync(userId, cancellationToken);
+            return userSummary?.DisplayName;
+        }
+
+        public async Task<UserDirectorySummary?> GetUserSummaryAsync(string userId, CancellationToken cancellationToken)
+        {
             if (string.IsNullOrWhiteSpace(userId))
             {
                 return null;
@@ -68,9 +75,15 @@ namespace TaskManagement.Api.Features.Users.Services
                 return null;
             }
 
-            return user?.IsActive == false
+            var displayName = user?.IsActive == false
                 ? $"{baseDisplayName} (Inactive)"
                 : baseDisplayName;
+
+            return new UserDirectorySummary
+            {
+                DisplayName = displayName,
+                Email = user?.Email
+            };
         }
 
         private sealed class UserSummaryResponse

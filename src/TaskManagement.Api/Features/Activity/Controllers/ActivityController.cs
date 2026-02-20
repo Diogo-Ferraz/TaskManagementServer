@@ -44,21 +44,24 @@ namespace TaskManagement.Api.Features.Activity.Controllers
             [FromQuery] Guid? projectId,
             [FromQuery] int? limit,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 50)
+            [FromQuery] int pageSize = 50,
+            [FromQuery] bool mineOnly = false)
         {
             _logger.LogInformation(
-                "Retrieving activity feed. ProjectId: {ProjectId}, Limit: {Limit}, Page: {Page}, PageSize: {PageSize}",
+                "Retrieving activity feed. ProjectId: {ProjectId}, Limit: {Limit}, Page: {Page}, PageSize: {PageSize}, MineOnly: {MineOnly}",
                 projectId,
                 limit,
                 page,
-                pageSize);
+                pageSize,
+                mineOnly);
 
             var result = await _mediator.Send(new GetActivityFeedQuery
             {
                 ProjectId = projectId,
                 Limit = limit,
                 Page = page,
-                PageSize = pageSize
+                PageSize = pageSize,
+                MineOnly = mineOnly
             });
 
             return Ok(result);

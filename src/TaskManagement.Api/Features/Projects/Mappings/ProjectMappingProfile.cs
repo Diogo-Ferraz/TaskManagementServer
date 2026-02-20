@@ -13,6 +13,7 @@ namespace TaskManagement.Api.Features.Projects.Mappings
                 .ForMember(dest => dest.TaskItems, opt => opt.MapFrom(src => src.TaskItems));
 
             CreateMap<CreateProjectCommand, Project>()
+                 .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description ?? string.Empty))
                  .ForMember(dest => dest.Id, opt => opt.Ignore())
                  .ForMember(dest => dest.OwnerUserId, opt => opt.Ignore())
                  .ForMember(dest => dest.Members, opt => opt.Ignore())

@@ -9,5 +9,6 @@ namespace TaskManagement.Api.Features.Activity.Queries
         public int? Limit { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 50;
+        public bool MineOnly { get; set; }
     }
 }
