@@ -30,7 +30,7 @@ jobs:
         with:
           context: .
           file: src/TaskManagement.Api/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             diogopro/taskmanagement-api:latest
@@ -41,7 +41,7 @@ jobs:
         with:
           context: .
           file: src/TaskManagement.Auth/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             diogopro/taskmanagement-auth:latest
