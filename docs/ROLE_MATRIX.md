@@ -27,7 +27,7 @@ Legend:
 | `POST /api/taskitems` (create) | Yes | Scoped | Scoped | PM/User must be owner/member |
 | `PUT /api/taskitems/{id}` (update) | Yes | Scoped | Scoped | PM/User must be owner/member/assignee (member allowed) |
 | `PATCH /api/taskitems/{id}` (partial update) | Yes | Scoped | Scoped | PM/User must be owner/member/assignee (member allowed) |
-| `DELETE /api/taskitems/{id}` (delete) | Yes | Scoped | Scoped (owner-only) | PM must be owner/member; User remains stricter |
+| `DELETE /api/taskitems/{id}` (delete) | Yes | Scoped | Scoped (assignee-only) | PM must be owner/member; User must be task assignee |
 | `GET /api/taskitems/{id}` (read one) | Yes | Scoped | Scoped | PM/User must be owner/member |
 | `GET /api/taskitems/project/{projectId}` | Yes | Yes | Scoped | PM has broad read; User must be owner/member |
 | `GET /api/taskitems` (filtered list) | Yes (all) | Scoped | Scoped | Non-admin constrained to accessible projects |
@@ -64,5 +64,5 @@ Supported query params:
 
 - `ProjectManager` can manage projects globally.
 - `ProjectManager` can manage tasks, but inside project scope.
-- `User` can manage tasks, but task delete is intentionally stricter (owner-only in handler).
+- `User` can manage tasks, but task delete is intentionally stricter (assignee-only in handler).
 - Project/member display names may include `(Inactive)` suffix when user directory reports a deactivated account.
