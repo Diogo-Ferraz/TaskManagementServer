@@ -62,11 +62,12 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
         }
 
         [Fact]
-        public async Task Handle_ShouldRemoveProject_WhenRequestIsValidAndUserIsOwner()
+        public async Task Handle_ShouldRemoveProject_WhenRequestIsValidAndUserIsProjectManagerOwner()
         {
             // Arrange
             var command = new DeleteProjectCommand { Id = _projectIdToDelete };
             _mockCurrentUser.Setup(u => u.Id).Returns(_ownerUserId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.ProjectManager)).Returns(true);
             int initialCount = await _dbContext.Projects.CountAsync();
 
             // Act
@@ -114,7 +115,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
         }
 
         [Fact]
-        public async Task Handle_ShouldRemoveProject_WhenUserIsProjectManager()
+        public async Task Handle_ShouldThrowForbiddenAccessException_WhenUserIsProjectManagerButNotOwner()
         {
             // Arrange
             var command = new DeleteProjectCommand { Id = _projectIdToDelete };
@@ -122,11 +123,14 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.Projects.Commands
             _mockCurrentUser.Setup(u => u.IsInRole(Roles.ProjectManager)).Returns(true);
 
             // Act
-            await _handler.Handle(command, CancellationToken.None);
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
             // Assert
-            var deletedProject = await _dbContext.Projects.FindAsync(_projectIdToDelete);
-            deletedProject.Should().BeNull();
+            await act.Should().ThrowAsync<ForbiddenAccessException>()
+                .WithMessage("*not authorized to delete this project*");
+
+            var existingProject = await _dbContext.Projects.FindAsync(_projectIdToDelete);
+            existingProject.Should().NotBeNull();
         }
 
         [Fact]

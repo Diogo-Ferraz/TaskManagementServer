@@ -42,7 +42,10 @@ namespace TaskManagement.Api.Features.Projects.Commands.Handlers
             var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
             var isProjectManager = _currentUserService.IsInRole(Roles.ProjectManager);
 
-            if (!isAdmin && !isProjectManager && project.OwnerUserId != currentUserId)
+            var canDeleteAsProjectManagerOwner =
+                isProjectManager && string.Equals(project.OwnerUserId, currentUserId, StringComparison.Ordinal);
+
+            if (!isAdmin && !canDeleteAsProjectManagerOwner)
             {
                 throw new ForbiddenAccessException("User is not authorized to delete this project.");
             }
