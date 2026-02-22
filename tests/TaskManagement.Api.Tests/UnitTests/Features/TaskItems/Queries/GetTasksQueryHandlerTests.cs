@@ -20,6 +20,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
     {
         private readonly TaskManagementDbContext _dbContext;
         private readonly Mock<ICurrentUserService> _mockCurrentUser;
+        private readonly Mock<IUserDirectoryService> _mockUserDirectoryService;
         private readonly GetTasksQueryHandler _handler;
 
         private readonly Guid _projectId = Guid.NewGuid();
@@ -35,11 +36,15 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
                 .Options;
 
             _mockCurrentUser = new Mock<ICurrentUserService>();
+            _mockUserDirectoryService = new Mock<IUserDirectoryService>();
+            _mockUserDirectoryService
+                .Setup(service => service.GetDisplayNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string userId, CancellationToken _) => $"Test User {userId}");
             _dbContext = new TaskManagementDbContext(options, _mockCurrentUser.Object);
             SeedDatabase();
 
             var mapper = new MapperConfiguration(cfg => cfg.AddProfile<TaskItemMappingProfile>()).CreateMapper();
-            _handler = new GetTasksQueryHandler(_dbContext, _mockCurrentUser.Object, mapper);
+            _handler = new GetTasksQueryHandler(_dbContext, _mockCurrentUser.Object, _mockUserDirectoryService.Object, mapper);
         }
 
         private void SeedDatabase()

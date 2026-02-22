@@ -22,6 +22,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
         private readonly TaskManagementDbContext _dbContext;
         private readonly IMapper _mapper;
         private readonly Mock<ICurrentUserService> _mockCurrentUser;
+        private readonly Mock<IUserDirectoryService> _mockUserDirectoryService;
         private readonly GetTaskItemQueryHandler _handler;
 
         private readonly Guid _existingTaskId = Guid.NewGuid();
@@ -42,10 +43,14 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
             _mapper = mappingConfig.CreateMapper();
 
             _mockCurrentUser = new Mock<ICurrentUserService>();
+            _mockUserDirectoryService = new Mock<IUserDirectoryService>();
+            _mockUserDirectoryService
+                .Setup(service => service.GetDisplayNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string userId, CancellationToken _) => $"Test User {userId}");
 
             SeedDatabase();
 
-            _handler = new GetTaskItemQueryHandler(_dbContext, _mockCurrentUser.Object, _mapper);
+            _handler = new GetTaskItemQueryHandler(_dbContext, _mockCurrentUser.Object, _mockUserDirectoryService.Object, _mapper);
         }
 
         private void SeedDatabase()
@@ -97,6 +102,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
                 .Excluding(dto => dto.CreatedAt)
                 .Excluding(dto => dto.LastModifiedAt)
                 .Excluding(dto => dto.ProjectName)
+                .Excluding(dto => dto.AssignedUserName)
                 .Excluding(dto => dto.CreatedByUserId)
                 .Excluding(dto => dto.LastModifiedByUserId));
             _mockCurrentUser.Verify(u => u.Id, Times.Once);
@@ -119,6 +125,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Queries
                 .Excluding(dto => dto.CreatedAt)
                 .Excluding(dto => dto.LastModifiedAt)
                 .Excluding(dto => dto.ProjectName)
+                .Excluding(dto => dto.AssignedUserName)
                 .Excluding(dto => dto.CreatedByUserId)
                 .Excluding(dto => dto.LastModifiedByUserId));
             _mockCurrentUser.Verify(u => u.Id, Times.Once);

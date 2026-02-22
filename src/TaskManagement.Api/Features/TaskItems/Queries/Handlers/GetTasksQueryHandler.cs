@@ -15,15 +15,18 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
         private const int MaxPageSize = 500;
         private readonly TaskManagementDbContext _dbContext;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IUserDirectoryService _userDirectoryService;
         private readonly IMapper _mapper;
 
         public GetTasksQueryHandler(
             TaskManagementDbContext dbContext,
             ICurrentUserService currentUserService,
+            IUserDirectoryService userDirectoryService,
             IMapper mapper)
         {
             _dbContext = dbContext;
             _currentUserService = currentUserService;
+            _userDirectoryService = userDirectoryService;
             _mapper = mapper;
         }
 
@@ -111,13 +114,16 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
 
             var skip = (page - 1) * pageSize;
 
-            return await query
+            var taskDtos = await query
                 .OrderByDescending(t => t.LastModifiedAt)
                 .ThenBy(t => t.Title)
                 .Skip(skip)
                 .Take(pageSize)
                 .ProjectTo<TaskItemDto>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
+
+            await TaskAssigneeDisplayNameResolver.ApplyAsync(taskDtos, _userDirectoryService, cancellationToken);
+            return taskDtos;
         }
     }
 }

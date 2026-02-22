@@ -257,6 +257,23 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         }
 
         [Fact]
+        public async Task GetTasks_WhenTaskHasAssignee_ShouldReturnResolvedAssignedUserName()
+        {
+            // Arrange
+            SetAuthenticatedUser(_projectOwnerId);
+
+            // Act
+            var response = await _client.GetAsync($"/api/taskitems?projectId={_project1Id}&page=1&pageSize=50");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var tasks = await response.Content.ReadFromJsonAsync<List<TaskItemDto>>();
+            tasks.Should().NotBeNull();
+            tasks.Should().Contain(t => t.Id == _task1InProject1Id && t.AssignedUserName == $"Test User {_taskAssigneeInProject1Id}");
+            tasks.Should().Contain(t => t.Id == _task2InProject1Id && t.AssignedUserName == $"Test User {_projectOwnerId}");
+        }
+
+        [Fact]
         public async Task GetTasksForProject_WhenUserIsMember_ShouldReturnTasksList()
         {
             // Arrange

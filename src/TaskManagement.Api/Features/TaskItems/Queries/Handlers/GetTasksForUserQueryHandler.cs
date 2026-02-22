@@ -12,15 +12,18 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
     {
         private readonly TaskManagementDbContext _dbContext;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IUserDirectoryService _userDirectoryService;
         private readonly IMapper _mapper;
 
         public GetTasksForUserQueryHandler(
             TaskManagementDbContext dbContext,
             ICurrentUserService currentUserService,
+            IUserDirectoryService userDirectoryService,
             IMapper mapper)
         {
             _dbContext = dbContext;
             _currentUserService = currentUserService;
+            _userDirectoryService = userDirectoryService;
             _mapper = mapper;
         }
 
@@ -39,6 +42,7 @@ namespace TaskManagement.Api.Features.TaskItems.Queries.Handlers
                 .ProjectTo<TaskItemDto>(_mapper.ConfigurationProvider)
                 .ToListAsync(cancellationToken);
 
+            await TaskAssigneeDisplayNameResolver.ApplyAsync(taskDtos, _userDirectoryService, cancellationToken);
             return taskDtos;
         }
     }
