@@ -54,16 +54,19 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                 throw new NotFoundException(nameof(TaskItem), request.Id);
             }
             var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
+            var isProjectManager = _currentUserService.IsInRole(Roles.ProjectManager);
             var isProjectMember = taskItem.Project.Members.Any(m => m.UserId == currentUserId);
             bool isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
             bool isAssignee = taskItem.AssignedUserId == currentUserId;
+            var canManageAsProjectManager = isProjectManager && (isProjectOwner || isProjectMember);
 
-            if (!isAdmin && !isProjectOwner && !isAssignee && !isProjectMember)
+            if (!isAdmin && !canManageAsProjectManager && !isProjectOwner && !isAssignee)
             {
                 throw new ForbiddenAccessException("User is not authorized to update this task item.");
             }
 
             var assignedUserId = NormalizeAssignedUserId(request.AssignedUserId);
+            EnsureAssignmentChangeAllowedForCurrentUser(currentUserId, taskItem.AssignedUserId, assignedUserId, isAdmin, isProjectManager);
             if (assignedUserId != null)
             {
                 var userExists = await _userDirectoryService.UserExistsAsync(assignedUserId, cancellationToken);
@@ -171,6 +174,34 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             }
 
             return assignedUserId.Trim();
+        }
+
+        private static void EnsureAssignmentChangeAllowedForCurrentUser(
+            string currentUserId,
+            string? currentAssignedUserId,
+            string? newAssignedUserId,
+            bool isAdmin,
+            bool isProjectManager)
+        {
+            if (isAdmin || isProjectManager)
+            {
+                return;
+            }
+
+            if (newAssignedUserId == null)
+            {
+                if (!string.Equals(currentAssignedUserId, currentUserId, StringComparison.Ordinal))
+                {
+                    throw new ForbiddenAccessException("Users can only unassign tasks currently assigned to themselves.");
+                }
+
+                return;
+            }
+
+            if (!string.Equals(newAssignedUserId, currentUserId, StringComparison.Ordinal))
+            {
+                throw new ForbiddenAccessException("Users can only assign tasks to themselves.");
+            }
         }
 
         private async Task EnsureAssignableUserRoleAsync(string assignedUserId, string propertyName, CancellationToken cancellationToken)

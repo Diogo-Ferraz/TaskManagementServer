@@ -54,6 +54,7 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             }
 
             var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
+            var isProjectManager = _currentUserService.IsInRole(Roles.ProjectManager);
             var isAuthorized = isAdmin
                                || project.OwnerUserId == currentUserId
                                || project.Members.Any(m => m.UserId == currentUserId);
@@ -65,6 +66,7 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 
             var taskItem = _mapper.Map<TaskItem>(request);
             var assignedUserId = NormalizeAssignedUserId(request.AssignedUserId);
+            EnsureAssignmentChangeAllowedForCurrentUser(currentUserId, assignedUserId, isAdmin, isProjectManager);
             if (assignedUserId != null)
             {
                 var userExists = await _userDirectoryService.UserExistsAsync(assignedUserId, cancellationToken);
@@ -109,6 +111,23 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             }
 
             return assignedUserId.Trim();
+        }
+
+        private static void EnsureAssignmentChangeAllowedForCurrentUser(
+            string currentUserId,
+            string? newAssignedUserId,
+            bool isAdmin,
+            bool isProjectManager)
+        {
+            if (isAdmin || isProjectManager)
+            {
+                return;
+            }
+
+            if (newAssignedUserId != null && !string.Equals(newAssignedUserId, currentUserId, StringComparison.Ordinal))
+            {
+                throw new ForbiddenAccessException("Users can only assign tasks to themselves.");
+            }
         }
 
         private async Task EnsureAssignableUserRoleAsync(string assignedUserId, string propertyName, CancellationToken cancellationToken)

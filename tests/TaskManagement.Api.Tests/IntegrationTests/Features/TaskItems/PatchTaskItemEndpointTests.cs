@@ -72,7 +72,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         [Fact]
         public async Task PatchTaskItem_ShouldUpdateStatusAndCreateActivityLog()
         {
-            SetAuthenticatedUser(_ownerUserId);
+            SetAuthenticatedUser(_ownerUserId, Roles.ProjectManager);
             var command = new PatchTaskItemCommand { Status = TaskStatus.Done };
 
             var response = await _client.PatchAsJsonAsync($"/api/taskitems/{_taskId}", command);
@@ -91,7 +91,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         [Fact]
         public async Task PatchTaskItem_ClearAssignedUser_ShouldSetNull()
         {
-            SetAuthenticatedUser(_ownerUserId);
+            SetAuthenticatedUser(_ownerUserId, Roles.ProjectManager);
             var command = new PatchTaskItemCommand { AssignedUserId = null };
 
             var response = await _client.PatchAsJsonAsync($"/api/taskitems/{_taskId}", command);
@@ -139,12 +139,63 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         }
 
-        private void SetAuthenticatedUser(string userId)
+        [Fact]
+        public async Task PatchTaskItem_WhenProjectMemberIsNotAssignee_ShouldReturnForbidden()
+        {
+            SetAuthenticatedUser(_otherUserId);
+            await _factory.SeedDatabaseAsync(db =>
+            {
+                var projectMember = new ProjectMember
+                {
+                    ProjectId = _projectId,
+                    UserId = _otherUserId,
+                    AddedByUserId = _ownerUserId,
+                    JoinedAt = DateTime.UtcNow
+                };
+
+                db.ProjectMembers.Add(projectMember);
+                return Task.CompletedTask;
+            });
+
+            var command = new PatchTaskItemCommand { Title = "Member cannot edit another user's task" };
+            var response = await _client.PatchAsJsonAsync($"/api/taskitems/{_taskId}", command);
+
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task PatchTaskItem_WhenAssigneeUserUnassignsSelf_ShouldReturnOk()
+        {
+            SetAuthenticatedUser(_memberUserId);
+            var command = new PatchTaskItemCommand { AssignedUserId = null };
+
+            var response = await _client.PatchAsJsonAsync($"/api/taskitems/{_taskId}", command);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var dto = await response.Content.ReadFromJsonAsync<TaskItemDto>();
+            dto.Should().NotBeNull();
+            dto!.AssignedUserId.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task PatchTaskItem_WhenUserAssignsTaskToAnotherUser_ShouldReturnForbidden()
+        {
+            SetAuthenticatedUser(_memberUserId);
+            var command = new PatchTaskItemCommand { AssignedUserId = _otherUserId };
+
+            var response = await _client.PatchAsJsonAsync($"/api/taskitems/{_taskId}", command);
+
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        private void SetAuthenticatedUser(string userId, string? roles = null)
         {
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserIdHeader);
             _client.DefaultRequestHeaders.Remove(TestAuthenticationHandler.TestUserRolesHeader);
             _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserIdHeader, userId);
-            _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.TestUserRolesHeader, Roles.User);
+            _client.DefaultRequestHeaders.Add(
+                TestAuthenticationHandler.TestUserRolesHeader,
+                string.IsNullOrWhiteSpace(roles) ? Roles.User : roles);
         }
     }
 }

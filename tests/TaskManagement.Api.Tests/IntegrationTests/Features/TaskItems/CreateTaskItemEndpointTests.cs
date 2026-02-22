@@ -78,7 +78,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         public async Task CreateTaskItem_WhenUserIsProjectOwner_ShouldReturnCreatedAndTaskDto()
         {
             // Arrange
-            SetAuthenticatedUser(_projectOwnerId);
+            SetAuthenticatedUser(_projectOwnerId, Roles.ProjectManager);
             var command = new CreateTaskItemCommand
             {
                 ProjectId = _project1Id,
@@ -137,6 +137,25 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         }
 
         [Fact]
+        public async Task CreateTaskItem_WhenUserAssignsTaskToAnotherUser_ShouldReturnForbidden()
+        {
+            // Arrange
+            SetAuthenticatedUser(_projectMemberId, Roles.User);
+            var command = new CreateTaskItemCommand
+            {
+                ProjectId = _project1Id,
+                Title = "Invalid assignment",
+                AssignedUserId = _unrelatedUserId
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/taskitems", command);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
         public async Task CreateTaskItem_WhenUserIsAdministrator_ShouldReturnCreatedAndTaskDto()
         {
             // Arrange
@@ -164,7 +183,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         public async Task CreateTaskItem_ShouldAutoAddMember_WhenAssigneeIsNotProjectMember()
         {
             // Arrange
-            SetAuthenticatedUser(_projectOwnerId);
+            SetAuthenticatedUser(_projectOwnerId, Roles.ProjectManager);
             var newAssigneeId = "user-task-new-member-create";
             var command = new CreateTaskItemCommand
             {
@@ -208,7 +227,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         public async Task CreateTaskItem_WhenAssignedUserIsProjectManager_ShouldReturnBadRequest()
         {
             // Arrange
-            SetAuthenticatedUser(_projectOwnerId);
+            SetAuthenticatedUser(_projectOwnerId, Roles.ProjectManager);
             var command = new CreateTaskItemCommand
             {
                 ProjectId = _project1Id,

@@ -119,7 +119,13 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
         public async Task Handle_ShouldUpdateTaskItem_WhenUserIsProjectOwner()
         {
             // Arrange
-            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Updated by Owner", Status = TaskStatus.InProgress };
+            var command = new UpdateTaskItemCommand
+            {
+                Id = _taskIdToUpdate,
+                Title = "Updated by Owner",
+                Status = TaskStatus.InProgress,
+                AssignedUserId = _projectOwnerId
+            };
             _mockCurrentUser.Setup(u => u.Id).Returns(_projectOwnerId);
 
             // Act
@@ -158,19 +164,24 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
         }
 
         [Fact]
-        public async Task Handle_ShouldUpdateTaskItem_WhenUserIsProjectMember()
+        public async Task Handle_ShouldThrowForbiddenAccessException_WhenUserIsProjectMemberButNotAssignee()
         {
             // Arrange
-            var command = new UpdateTaskItemCommand { Id = _taskIdToUpdate, Title = "Updated by Member", Status = TaskStatus.InProgress };
+            var command = new UpdateTaskItemCommand
+            {
+                Id = _taskIdToUpdate,
+                Title = "Updated by Member",
+                Status = TaskStatus.InProgress,
+                AssignedUserId = _projectMemberId
+            };
             _mockCurrentUser.Setup(u => u.Id).Returns(_projectMemberId);
 
             // Act
-            var resultDto = await _handler.Handle(command, CancellationToken.None);
+            Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
             // Assert
-            resultDto.Should().NotBeNull();
-            resultDto.Title.Should().Be(command.Title);
-            resultDto.Status.Should().Be(command.Status);
+            await act.Should().ThrowAsync<ForbiddenAccessException>()
+                .WithMessage("*not authorized to update this task item*");
         }
 
         [Fact]
@@ -247,6 +258,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 AssignedUserId = "invalid-user"
             };
             _mockCurrentUser.Setup(u => u.Id).Returns(_projectOwnerId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.ProjectManager)).Returns(true);
             _mockUserDirectory
                 .Setup(s => s.UserExistsAsync(command.AssignedUserId!, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -273,6 +285,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 AssignedUserId = newAssigneeId
             };
             _mockCurrentUser.Setup(u => u.Id).Returns(_projectOwnerId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.ProjectManager)).Returns(true);
             _mockUserDirectory
                 .Setup(s => s.UserExistsAsync(newAssigneeId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);

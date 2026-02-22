@@ -215,6 +215,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 AssignedUserId = "invalid-user"
             };
             _mockCurrentUser.Setup(u => u.Id).Returns(_projectOwnerId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.ProjectManager)).Returns(true);
             _mockUserDirectory
                 .Setup(s => s.UserExistsAsync(command.AssignedUserId!, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -241,6 +242,7 @@ namespace TaskManagement.Api.Tests.UnitTests.Features.TaskItems.Commands
                 AssignedUserId = newAssigneeId
             };
             _mockCurrentUser.Setup(u => u.Id).Returns(_projectOwnerId);
+            _mockCurrentUser.Setup(u => u.IsInRole(Roles.ProjectManager)).Returns(true);
             _mockUserDirectory
                 .Setup(s => s.UserExistsAsync(newAssigneeId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
