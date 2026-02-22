@@ -169,7 +169,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         }
 
         [Fact]
-        public async Task DeleteTaskItem_WhenUserIsAssigneeButNotOwner_ShouldReturnForbidden()
+        public async Task DeleteTaskItem_WhenUserIsAssigneeButNotOwner_ShouldReturnNoContentAndDeleteTask()
         {
             // Arrange
             SetAuthenticatedUser(_taskAssigneeId);
@@ -184,15 +184,15 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             var response = await _client.DeleteAsync($"/api/taskitems/{_taskToDeleteId}");
 
             // Assert Response
-            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
             // Assert Database State
             using (var scope = _factory.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<TaskManagementDbContext>();
                 var taskInDb = await dbContext.TaskItems.FindAsync(_taskToDeleteId);
-                taskInDb.Should().NotBeNull();
-                (await dbContext.TaskItems.Where(t => t.ProjectId == _projectId).CountAsync()).Should().Be(initialTaskCount);
+                taskInDb.Should().BeNull();
+                (await dbContext.TaskItems.Where(t => t.ProjectId == _projectId).CountAsync()).Should().Be(initialTaskCount - 1);
             }
         }
 

@@ -45,13 +45,13 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
 
             var isAdmin = _currentUserService.IsInRole(Roles.Administrator);
             var isProjectManager = _currentUserService.IsInRole(Roles.ProjectManager);
+            var isAssignee = taskItem.AssignedUserId == currentUserId;
             var isProjectMember = await _dbContext.ProjectMembers
                 .AnyAsync(pm => pm.ProjectId == taskItem.ProjectId && pm.UserId == currentUserId, cancellationToken);
             bool isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
             var canDeleteAsProjectManager = isProjectManager && (isProjectOwner || isProjectMember);
 
-            // Keep user deletes stricter: owner-only unless elevated role.
-            if (!isAdmin && !canDeleteAsProjectManager && !isProjectOwner)
+            if (!isAdmin && !canDeleteAsProjectManager && !isProjectOwner && !isAssignee)
             {
                 throw new ForbiddenAccessException("User is not authorized to delete this task item.");
             }
