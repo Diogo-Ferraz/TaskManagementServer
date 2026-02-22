@@ -53,7 +53,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Spa
 
             // 2) Project manager creates tasks that will populate Kanban columns.
             var todoTask = await CreateTaskAsync(projectId, "Task Todo", TaskStatus.Todo, MemberUserId);
-            var inProgressTask = await CreateTaskAsync(projectId, "Task In Progress", TaskStatus.InProgress, ProjectManagerId);
+            var inProgressTask = await CreateTaskAsync(projectId, "Task In Progress", TaskStatus.InProgress, MemberUserId);
             var doneTask = await CreateTaskAsync(projectId, "Task Done", TaskStatus.Done, MemberUserId);
 
             // 3) Member user can fetch visible projects (project picker in SPA).
@@ -71,7 +71,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Spa
             kanbanTasks.Should().NotBeNull();
             kanbanTasks!.Should().HaveCount(3);
             kanbanTasks.Should().Contain(t => t.Id == todoTask.Id && t.AssignedUserId == MemberUserId);
-            kanbanTasks.Should().Contain(t => t.Id == inProgressTask.Id && t.AssignedUserId == ProjectManagerId);
+            kanbanTasks.Should().Contain(t => t.Id == inProgressTask.Id && t.AssignedUserId == MemberUserId);
             kanbanTasks.Should().Contain(t => t.Id == doneTask.Id && t.Status == TaskStatus.Done);
 
             // 5) Member updates one task status (typical drag-and-drop status move).
@@ -91,7 +91,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.Spa
             var dashboard = await dashboardResponse.Content.ReadFromJsonAsync<DashboardSummaryDto>();
             dashboard.Should().NotBeNull();
             dashboard!.ProjectsCount.Should().Be(1);
-            dashboard.AssignedTasksCount.Should().Be(2);
+            dashboard.AssignedTasksCount.Should().Be(3);
             dashboard.TasksClosedThisWeekCount.Should().Be(1);
             dashboard.OverdueAssignedTasksCount.Should().Be(0);
 

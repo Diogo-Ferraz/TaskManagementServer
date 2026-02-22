@@ -82,7 +82,9 @@ namespace TaskManagement.Api.Features.Users.Services
             return new UserDirectorySummary
             {
                 DisplayName = displayName,
-                Email = user?.Email
+                Email = user?.Email,
+                Roles = user?.Roles?.Where(role => !string.IsNullOrWhiteSpace(role)).Select(role => role.Trim()).ToList()
+                    ?? []
             };
         }
 
@@ -92,6 +94,7 @@ namespace TaskManagement.Api.Features.Users.Services
             public string? UserName { get; set; }
             public string? Email { get; set; }
             public bool IsActive { get; set; }
+            public List<string> Roles { get; set; } = [];
         }
     }
 }

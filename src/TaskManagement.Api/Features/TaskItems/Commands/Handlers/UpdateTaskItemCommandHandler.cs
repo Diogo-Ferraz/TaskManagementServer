@@ -76,6 +76,7 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
                     });
                 }
 
+                await EnsureAssignableUserRoleAsync(assignedUserId, nameof(request.AssignedUserId), cancellationToken);
                 EnsureProjectMember(_dbContext, taskItem.Project, assignedUserId, currentUserId);
             }
 
@@ -170,6 +171,20 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             }
 
             return assignedUserId.Trim();
+        }
+
+        private async Task EnsureAssignableUserRoleAsync(string assignedUserId, string propertyName, CancellationToken cancellationToken)
+        {
+            var userSummary = await _userDirectoryService.GetUserSummaryAsync(assignedUserId, cancellationToken);
+            var roles = userSummary?.Roles ?? Array.Empty<string>();
+
+            if (roles.Contains(Roles.ProjectManager))
+            {
+                throw new ValidationException(new[]
+                {
+                    new ValidationFailure(propertyName, "Assigned user cannot have ProjectManager role.")
+                });
+            }
         }
 
         private static void EnsureProjectMember(

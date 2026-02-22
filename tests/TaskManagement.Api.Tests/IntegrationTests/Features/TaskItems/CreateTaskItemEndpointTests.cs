@@ -205,6 +205,28 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
         }
 
         [Fact]
+        public async Task CreateTaskItem_WhenAssignedUserIsProjectManager_ShouldReturnBadRequest()
+        {
+            // Arrange
+            SetAuthenticatedUser(_projectOwnerId);
+            var command = new CreateTaskItemCommand
+            {
+                ProjectId = _project1Id,
+                Title = "Task With Project Manager Assignee",
+                AssignedUserId = "user-pm-create"
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/taskitems", command);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            var problemDetails = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+            problemDetails.Should().NotBeNull();
+            problemDetails!.Errors.Should().ContainKey(nameof(CreateTaskItemCommand.AssignedUserId));
+        }
+
+        [Fact]
         public async Task CreateTaskItem_ForNonExistentProject_ShouldReturnNotFound()
         {
             // Arrange

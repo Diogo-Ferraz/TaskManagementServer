@@ -30,8 +30,25 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Fixtures
             return Task.FromResult<UserDirectorySummary?>(new UserDirectorySummary
             {
                 DisplayName = $"Test User {userId}",
-                Email = $"{userId}@example.test"
+                Email = $"{userId}@example.test",
+                Roles = ResolveRoles(userId)
             });
+        }
+
+        private static IReadOnlyCollection<string> ResolveRoles(string userId)
+        {
+            if (userId.Contains("pm", StringComparison.OrdinalIgnoreCase)
+                || userId.Contains("project-manager", StringComparison.OrdinalIgnoreCase))
+            {
+                return ["ProjectManager"];
+            }
+
+            if (userId.Contains("admin", StringComparison.OrdinalIgnoreCase))
+            {
+                return ["Administrator"];
+            }
+
+            return ["User"];
         }
     }
 }

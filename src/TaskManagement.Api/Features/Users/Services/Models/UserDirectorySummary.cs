@@ -4,5 +4,6 @@ namespace TaskManagement.Api.Features.Users.Services.Models
     {
         public string? DisplayName { get; init; }
         public string? Email { get; init; }
+        public IReadOnlyCollection<string> Roles { get; init; } = Array.Empty<string>();
     }
 }
