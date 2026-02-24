@@ -177,6 +177,36 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
         }
 
         [Fact]
+        public async Task GetUsers_WhenProjectManagerAndRoleUser_ShouldReturnMatchingUsers()
+        {
+            await EnsureUserHasRoleAsync(TestData.User.Email, Roles.ProjectManager);
+            var userRoleEmail = $"assignable-{Guid.NewGuid():N}@example.com";
+            await EnsureUserWithRoleAsync(userRoleEmail, Roles.User);
+
+            var token = await GetAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync($"/api/users?role={Roles.User}&page=1&pageSize=25");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var list = await response.Content.ReadFromJsonAsync<UserListResponse>();
+            list.Should().NotBeNull();
+            list!.Items.Should().NotBeEmpty();
+            list.Items.Should().OnlyContain(u => u.Roles.Contains(Roles.User));
+        }
+
+        [Fact]
+        public async Task GetUsers_WhenProjectManagerWithoutRoleFilter_ShouldReturnForbidden()
+        {
+            await EnsureUserHasRoleAsync(TestData.User.Email, Roles.ProjectManager);
+            var token = await GetAccessTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _client.GetAsync("/api/users?page=1&pageSize=25");
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
         public async Task GetUsers_WithSearch_WhenAdmin_ShouldReturnMatchingUsers()
         {
             var token = await GetAdminAccessTokenAsync();
@@ -530,6 +560,40 @@ namespace TaskManagement.Auth.Tests.IntegrationTests.Features.Users
 
             return await GetAccessTokenAsync(adminEmail, adminPassword);
         }
+
+        private async Task EnsureUserWithRoleAsync(string email, string role, string password = "StrongPassword@123")
+        {
+            using var scope = _factory.Services.CreateScope();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(new IdentityRole(role));
+            }
+
+            var user = await userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                user = new ApplicationUser
+                {
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = true
+                };
+                var createResult = await userManager.CreateAsync(user, password);
+                createResult.Succeeded.Should().BeTrue();
+            }
+
+            if (!await userManager.IsInRoleAsync(user, role))
+            {
+                var addRoleResult = await userManager.AddToRoleAsync(user, role);
+                addRoleResult.Succeeded.Should().BeTrue();
+            }
+        }
+
+        private Task EnsureUserHasRoleAsync(string email, string role)
+            => EnsureUserWithRoleAsync(email, role);
 
         private static async Task<HttpResponseMessage> InitiateAuthorizationRequest(
             HttpClient client,

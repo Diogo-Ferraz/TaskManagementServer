@@ -54,12 +54,12 @@ namespace TaskManagement.Auth.Features.Users
         /// <returns>A paged list of users.</returns>
         [Authorize(
             AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
-            Roles = Roles.Administrator)]
+            Roles = $"{Roles.Administrator},{Roles.ProjectManager}")]
         [EnableRateLimiting(RateLimitingPolicies.AdminUserManagement)]
         [HttpGet]
         [SwaggerOperation(
-            Summary = "List users (admin)",
-            Description = "Returns a paged admin-only list of users with optional filters.")]
+            Summary = "List users (admin/project manager)",
+            Description = "Returns a paged list of users with optional filters. Project managers are restricted to role=User queries.")]
         [ProducesResponseType(typeof(UserListResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -75,6 +75,17 @@ namespace TaskManagement.Auth.Features.Users
             [FromQuery] int? take,
             CancellationToken cancellationToken)
         {
+            var isAdmin = User.IsInRole(Roles.Administrator);
+            if (!isAdmin)
+            {
+                // Project managers can only list assignable contributors.
+                var requestedRole = role?.Trim();
+                if (!string.Equals(requestedRole, Roles.User, StringComparison.Ordinal))
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden);
+                }
+            }
+
             var now = DateTimeOffset.UtcNow;
             var query = _userManager.Users.AsNoTracking();
 
