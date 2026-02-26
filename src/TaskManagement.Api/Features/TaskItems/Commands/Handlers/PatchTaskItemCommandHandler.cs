@@ -60,8 +60,15 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             var isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
             var isAssignee = taskItem.AssignedUserId == currentUserId;
             var canManageAsProjectManager = isProjectManager && (isProjectOwner || isProjectMember);
+            var isSelfAssigningUnassignedTaskOnly = IsSelfAssigningUnassignedTaskOnly(
+                request,
+                currentUserId,
+                taskItem.AssignedUserId,
+                isAdmin,
+                isProjectManager,
+                isProjectMember);
 
-            if (!isAdmin && !canManageAsProjectManager && !isProjectOwner && !isAssignee)
+            if (!isAdmin && !canManageAsProjectManager && !isProjectOwner && !isAssignee && !isSelfAssigningUnassignedTaskOnly)
             {
                 throw new ForbiddenAccessException("User is not authorized to update this task item.");
             }
@@ -186,6 +193,33 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             }
 
             return assignedUserId.Trim();
+        }
+
+        private static bool IsSelfAssigningUnassignedTaskOnly(
+            PatchTaskItemCommand request,
+            string currentUserId,
+            string? currentAssignedUserId,
+            bool isAdmin,
+            bool isProjectManager,
+            bool isProjectMember)
+        {
+            if (isAdmin || isProjectManager || !isProjectMember)
+            {
+                return false;
+            }
+
+            if (!request.AssignedUserId.HasValue || !string.IsNullOrWhiteSpace(currentAssignedUserId))
+            {
+                return false;
+            }
+
+            if (request.Title.HasValue || request.Description.HasValue || request.Status.HasValue || request.DueDate.HasValue)
+            {
+                return false;
+            }
+
+            var normalizedRequestedAssignee = NormalizeAssignedUserId(request.AssignedUserId.Value);
+            return string.Equals(normalizedRequestedAssignee, currentUserId, StringComparison.Ordinal);
         }
 
         private static void EnsureAssignmentChangeAllowedForCurrentUser(

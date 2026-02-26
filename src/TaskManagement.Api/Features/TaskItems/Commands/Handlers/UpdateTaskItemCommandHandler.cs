@@ -59,8 +59,15 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             bool isProjectOwner = taskItem.Project.OwnerUserId == currentUserId;
             bool isAssignee = taskItem.AssignedUserId == currentUserId;
             var canManageAsProjectManager = isProjectManager && (isProjectOwner || isProjectMember);
+            var isSelfAssigningUnassignedTaskOnly = IsSelfAssigningUnassignedTaskOnly(
+                request,
+                taskItem,
+                currentUserId,
+                isAdmin,
+                isProjectManager,
+                isProjectMember);
 
-            if (!isAdmin && !canManageAsProjectManager && !isProjectOwner && !isAssignee)
+            if (!isAdmin && !canManageAsProjectManager && !isProjectOwner && !isAssignee && !isSelfAssigningUnassignedTaskOnly)
             {
                 throw new ForbiddenAccessException("User is not authorized to update this task item.");
             }
@@ -174,6 +181,36 @@ namespace TaskManagement.Api.Features.TaskItems.Commands.Handlers
             }
 
             return assignedUserId.Trim();
+        }
+
+        private static bool IsSelfAssigningUnassignedTaskOnly(
+            UpdateTaskItemCommand request,
+            TaskItem taskItem,
+            string currentUserId,
+            bool isAdmin,
+            bool isProjectManager,
+            bool isProjectMember)
+        {
+            if (isAdmin || isProjectManager || !isProjectMember)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(taskItem.AssignedUserId))
+            {
+                return false;
+            }
+
+            var normalizedRequestedAssignee = NormalizeAssignedUserId(request.AssignedUserId);
+            if (!string.Equals(normalizedRequestedAssignee, currentUserId, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return string.Equals(request.Title, taskItem.Title, StringComparison.Ordinal)
+                   && string.Equals(request.Description, taskItem.Description, StringComparison.Ordinal)
+                   && request.Status == taskItem.Status
+                   && request.DueDate == taskItem.DueDate;
         }
 
         private static void EnsureAssignmentChangeAllowedForCurrentUser(

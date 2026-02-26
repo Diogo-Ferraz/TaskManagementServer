@@ -23,6 +23,7 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
 
         private readonly Guid _projectId = Guid.NewGuid();
         private readonly Guid _taskId = Guid.NewGuid();
+        private readonly Guid _unassignedTaskId = Guid.NewGuid();
         private readonly string _ownerUserId = "user-task-patch-owner";
         private readonly string _memberUserId = "user-task-patch-member";
         private readonly string _otherUserId = "user-task-patch-other";
@@ -62,6 +63,15 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
                     Status = TaskStatus.Todo,
                     ProjectId = _projectId,
                     AssignedUserId = _memberUserId
+                });
+                db.TaskItems.Add(new TaskItem
+                {
+                    Id = _unassignedTaskId,
+                    Title = "Unassigned Task",
+                    Description = "No assignee yet",
+                    Status = TaskStatus.Todo,
+                    ProjectId = _projectId,
+                    AssignedUserId = null
                 });
                 return Task.CompletedTask;
             });
@@ -184,6 +194,35 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Features.TaskItems
             var command = new PatchTaskItemCommand { AssignedUserId = _otherUserId };
 
             var response = await _client.PatchAsJsonAsync($"/api/taskitems/{_taskId}", command);
+
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task PatchTaskItem_WhenProjectMemberSelfAssignsUnassignedTask_ShouldReturnOk()
+        {
+            SetAuthenticatedUser(_memberUserId);
+            var command = new PatchTaskItemCommand { AssignedUserId = _memberUserId };
+
+            var response = await _client.PatchAsJsonAsync($"/api/taskitems/{_unassignedTaskId}", command);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var dto = await response.Content.ReadFromJsonAsync<TaskItemDto>();
+            dto.Should().NotBeNull();
+            dto!.AssignedUserId.Should().Be(_memberUserId);
+        }
+
+        [Fact]
+        public async Task PatchTaskItem_WhenProjectMemberSelfAssignsUnassignedTaskAndChangesOtherFields_ShouldReturnForbidden()
+        {
+            SetAuthenticatedUser(_memberUserId);
+            var command = new PatchTaskItemCommand
+            {
+                AssignedUserId = _memberUserId,
+                Title = "Should not be allowed"
+            };
+
+            var response = await _client.PatchAsJsonAsync($"/api/taskitems/{_unassignedTaskId}", command);
 
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         }
