@@ -6,7 +6,7 @@ namespace TaskManagement.Auth.Infrastructure.Persistence
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        public ApplicationDbContext(DbContextOptions options)
             : base(options)
         {
         }

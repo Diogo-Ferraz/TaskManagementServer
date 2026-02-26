@@ -11,28 +11,34 @@ namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
             var sqlServerConnectionString = configuration.GetConnectionString("TaskManagementDbConnection");
             var postgresConnectionString = configuration.GetConnectionString("TaskManagementDbConnectionPostgres");
 
-            services.AddDbContext<TaskManagementDbContext>(options =>
+            if (IsPostgres(databaseProvider))
             {
-                if (IsPostgres(databaseProvider))
+                if (string.IsNullOrWhiteSpace(postgresConnectionString))
                 {
-                    if (string.IsNullOrWhiteSpace(postgresConnectionString))
-                    {
-                        throw new InvalidOperationException("Connection string 'TaskManagementDbConnectionPostgres' not found.");
-                    }
+                    throw new InvalidOperationException("Connection string 'TaskManagementDbConnectionPostgres' not found.");
+                }
 
+                services.AddDbContext<TaskManagementDbContextPostgres>(options =>
+                {
                     options.UseNpgsql(postgresConnectionString,
                         npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
                             maxRetryCount: 5,
                             maxRetryDelay: TimeSpan.FromSeconds(10),
                             errorCodesToAdd: null));
-                    return;
-                }
+                });
 
-                if (string.IsNullOrWhiteSpace(sqlServerConnectionString))
-                {
-                    throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
-                }
+                services.AddScoped<TaskManagementDbContext>(sp =>
+                    sp.GetRequiredService<TaskManagementDbContextPostgres>());
+                return services;
+            }
 
+            if (string.IsNullOrWhiteSpace(sqlServerConnectionString))
+            {
+                throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
+            }
+
+            services.AddDbContext<TaskManagementDbContext>(options =>
+            {
                 options.UseSqlServer(sqlServerConnectionString,
                     sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
                         maxRetryCount: 5,

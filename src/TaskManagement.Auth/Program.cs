@@ -6,6 +6,12 @@ using TaskManagement.Auth.Features.Identity.Configuration;
 using TaskManagement.Auth.Infrastructure.Common.Configuration;
 using TaskManagement.Auth.Infrastructure.Persistence.Configuration;
 
+var isEfDesignTime = args.Contains("--ef-design", StringComparer.OrdinalIgnoreCase);
+if (isEfDesignTime)
+{
+    return 0;
+}
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
     .Enrich.FromLogContext()
@@ -38,7 +44,6 @@ try
     builder.Services.AddRazorPagesConfiguration();
 
     var app = builder.Build();
-
     await app.ApplyMigrationsAndSeedDataAsync();
 
     app.ConfigureRequestPipeline(builder.Environment);

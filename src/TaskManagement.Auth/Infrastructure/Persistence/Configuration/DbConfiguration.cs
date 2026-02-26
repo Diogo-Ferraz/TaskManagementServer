@@ -11,37 +11,45 @@ namespace TaskManagement.Auth.Infrastructure.Persistence.Configuration
             var sqlServerConnectionString = configuration.GetConnectionString("TaskManagementDbConnection");
             var postgresConnectionString = configuration.GetConnectionString("TaskManagementDbConnectionPostgres");
 
-            services.AddDbContext<ApplicationDbContext>(options =>
+            if (IsPostgres(databaseProvider))
             {
-                if (IsPostgres(databaseProvider))
+                if (string.IsNullOrWhiteSpace(postgresConnectionString))
                 {
-                    if (string.IsNullOrWhiteSpace(postgresConnectionString))
-                    {
-                        throw new InvalidOperationException("Connection string 'TaskManagementDbConnectionPostgres' not found.");
-                    }
+                    throw new InvalidOperationException("Connection string 'TaskManagementDbConnectionPostgres' not found.");
+                }
 
+                services.AddDbContext<ApplicationDbContextPostgres>(options =>
+                {
                     options.UseNpgsql(postgresConnectionString,
                         npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
                             maxRetryCount: 5,
                             maxRetryDelay: TimeSpan.FromSeconds(10),
                             errorCodesToAdd: null));
-                }
-                else
-                {
-                    if (string.IsNullOrWhiteSpace(sqlServerConnectionString))
-                    {
-                        throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
-                    }
 
+                    options.UseOpenIddict();
+                });
+
+                services.AddScoped<ApplicationDbContext>(sp =>
+                    sp.GetRequiredService<ApplicationDbContextPostgres>());
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(sqlServerConnectionString))
+                {
+                    throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
+                }
+
+                services.AddDbContext<ApplicationDbContext>(options =>
+                {
                     options.UseSqlServer(sqlServerConnectionString,
                         sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
                             maxRetryCount: 5,
                             maxRetryDelay: TimeSpan.FromSeconds(10),
                             errorNumbersToAdd: null));
-                }
 
-                options.UseOpenIddict();
-            });
+                    options.UseOpenIddict();
+                });
+            }
 
             services.AddDatabaseDeveloperPageExceptionFilter();
             services.AddHealthChecks();
