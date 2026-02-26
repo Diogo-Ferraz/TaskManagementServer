@@ -169,6 +169,10 @@ Benefits:
 ### Optional environment setup
 You can copy `.env.example` to `.env` and adjust values if needed.
 
+Database selection:
+- `DATABASE_PROVIDER=SqlServer` (default, current baseline)
+- `DATABASE_PROVIDER=Postgres` (PostgreSQL path during migration)
+
 ### Run
 ```bash
 docker compose up --build
