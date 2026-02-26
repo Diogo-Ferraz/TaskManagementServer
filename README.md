@@ -30,8 +30,10 @@ flowchart LR
 - JWT validation in API service.
 - Role and resource-based authorization checks in handlers.
 - Auth user directory exposes `isActive` status and user roles.
-- Admin-only user management endpoints in Auth service:
+- User management endpoints in Auth service:
   - `GET /api/users` with `search`, `isActive`, and `role` filters (paged).
+    - `Administrator`: can query all users with full filters.
+    - `ProjectManager`: restricted to `role=User` queries (assignable-contributor lookup).
   - `GET /api/users/{id}/details` for richer admin user profile data.
   - `PATCH /api/users/{id}/status` to activate/deactivate users.
 - Safety guards:

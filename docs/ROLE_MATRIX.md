@@ -14,7 +14,7 @@ Legend:
 | `POST /api/projects` (create) | Yes | Yes | No | Policy `CanManageProjects` |
 | `PUT /api/projects/{id}` (update) | Yes | Yes | No | PM/Admin not restricted by owner |
 | `PATCH /api/projects/{id}` (partial update) | Yes | Yes | No | PM/Admin not restricted by owner |
-| `DELETE /api/projects/{id}` (delete) | Yes | Yes | No | PM/Admin not restricted by owner |
+| `DELETE /api/projects/{id}` (delete) | Yes | Scoped | No | PM must be project owner |
 | `GET /api/projects/{id}` (read one) | Yes | Yes | Scoped | User must be owner/member |
 | `GET /api/projects` (read list) | Yes (all) | Scoped | Scoped | Non-admin: owner/member projects |
 | `GET /api/projects/my-projects` | Scoped | Scoped | Scoped | Owner/member projects |

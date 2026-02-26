@@ -2,7 +2,7 @@
 
 This guide centralizes SPA-facing API behavior across both services:
 - `TaskManagement.Api`
-- `TaskManagement.Auth` (admin user-management APIs under `api/*`)
+- `TaskManagement.Auth` (user-management APIs under `api/*`)
 
 Use this as the single contract reference for filters, pagination, patch semantics, and error format.
 
@@ -12,7 +12,7 @@ List endpoints support pagination:
 - `GET /api/projects`
 - `GET /api/taskitems`
 - `GET /api/activity`
-- `GET /api/users` (Auth service, admin-only)
+- `GET /api/users` (Auth service, role-restricted behavior)
 
 Defaults and caps:
 - Projects: `page=1`, `pageSize=50`, max `200`
@@ -52,6 +52,10 @@ Supported query params:
 - `isActive`
 - `role`
 - `page`, `pageSize`, `skip`, `take`
+
+Authorization behavior:
+- `Administrator`: full user listing/filtering.
+- `ProjectManager`: allowed only when `role=User`; other queries return `403`.
 
 ## Patch Semantics
 
@@ -98,6 +102,11 @@ Endpoints:
 - `GET /api/users`
 - `GET /api/users/{id}/details`
 - `PATCH /api/users/{id}/status`
+
+Endpoint access:
+- `GET /api/users`: `Administrator` + `ProjectManager` (PM restricted to `role=User`).
+- `GET /api/users/{id}/details`: `Administrator` only.
+- `PATCH /api/users/{id}/status`: `Administrator` only.
 
 Status change payload:
 
