@@ -17,7 +17,7 @@ flowchart LR
     SPA["TaskManagementClient (Angular SPA)"] -->|"HTTPS"| Caddy["Caddy Reverse Proxy"]
     Caddy -->|"HTTPS"| Auth["Auth Service<br/>OpenIddict + Identity"]
     Caddy -->|"HTTPS"| Api["API Service<br/>Projects + TaskItems + Activity"]
-    Auth --> Db[("SQL Server / PostgreSQL")]
+    Auth --> Db[("PostgreSQL")]
     Api --> Db
 ```
 
@@ -123,7 +123,7 @@ Benefits:
 ## Tech Stack
 
 - ASP.NET Core (.NET 8)
-- EF Core (SQL Server + PostgreSQL)
+- EF Core (PostgreSQL)
 - MediatR
 - FluentValidation
 - AutoMapper
@@ -148,12 +148,8 @@ Benefits:
 - SignalR real-time activity events
 - Unit and integration tests
 
-### `SQL Server`
-- Shared persistence for Auth and API domains
-
 ### `PostgreSQL`
-- Alternative shared persistence for Auth and API domains
-- Can run side-by-side with SQL Server during migration
+- Shared persistence for Auth and API domains
 
 ### `Caddy`
 - Local HTTPS termination
@@ -173,27 +169,12 @@ Benefits:
 ### Optional environment setup
 You can copy `.env.example` to `.env` and adjust values if needed.
 
-Database selection:
-- `DATABASE_PROVIDER=SqlServer` (default, current baseline)
-- `DATABASE_PROVIDER=Postgres` (PostgreSQL runtime mode)
-
 ### Run
 ```bash
 docker compose up --build
 ```
 
-This starts SQL Server, PostgreSQL, Auth, API, and Caddy with local HTTPS routing.
-Only the provider selected by `DATABASE_PROVIDER` is used by Auth/API at runtime.
-
-Examples:
-
-```bash
-# default (SQL Server)
-DATABASE_PROVIDER=SqlServer docker compose up --build
-
-# PostgreSQL mode
-DATABASE_PROVIDER=Postgres docker compose up --build
-```
+This starts PostgreSQL, Auth, API, and Caddy with local HTTPS routing.
 
 ---
 

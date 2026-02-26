@@ -8,7 +8,8 @@ namespace TaskManagement.Api.Infrastructure.Persistence.DesignTime
         public TaskManagementDbContextPostgres CreateDbContext(string[] args)
         {
             var connectionString =
-                Environment.GetEnvironmentVariable("ConnectionStrings__TaskManagementDbConnectionPostgres")
+                Environment.GetEnvironmentVariable("ConnectionStrings__TaskManagementDbConnection")
+                ?? Environment.GetEnvironmentVariable("ConnectionStrings__TaskManagementDbConnectionPostgres")
                 ?? "Host=localhost;Port=5432;Database=TaskManagementDb;Username=postgres;Password=postgres";
 
             var optionsBuilder = new DbContextOptionsBuilder<TaskManagementDbContextPostgres>();

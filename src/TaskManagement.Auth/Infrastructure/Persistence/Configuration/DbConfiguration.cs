@@ -7,60 +7,31 @@ namespace TaskManagement.Auth.Infrastructure.Persistence.Configuration
     {
         public static IServiceCollection AddDatabaseConfiguration(this IServiceCollection services, IConfiguration configuration)
         {
-            var databaseProvider = configuration["DatabaseProvider"] ?? "SqlServer";
-            var sqlServerConnectionString = configuration.GetConnectionString("TaskManagementDbConnection");
-            var postgresConnectionString = configuration.GetConnectionString("TaskManagementDbConnectionPostgres");
-
-            if (IsPostgres(databaseProvider))
+            var connectionString = configuration.GetConnectionString("TaskManagementDbConnection");
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
-                if (string.IsNullOrWhiteSpace(postgresConnectionString))
-                {
-                    throw new InvalidOperationException("Connection string 'TaskManagementDbConnectionPostgres' not found.");
-                }
-
-                services.AddDbContext<ApplicationDbContextPostgres>(options =>
-                {
-                    options.UseNpgsql(postgresConnectionString,
-                        npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
-                            maxRetryCount: 5,
-                            maxRetryDelay: TimeSpan.FromSeconds(10),
-                            errorCodesToAdd: null));
-
-                    options.UseOpenIddict();
-                });
-
-                services.AddScoped<ApplicationDbContext>(sp =>
-                    sp.GetRequiredService<ApplicationDbContextPostgres>());
+                throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
             }
-            else
+
+            services.AddDbContext<ApplicationDbContextPostgres>(options =>
             {
-                if (string.IsNullOrWhiteSpace(sqlServerConnectionString))
-                {
-                    throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
-                }
+                options.UseNpgsql(connectionString,
+                    npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorCodesToAdd: null));
 
-                services.AddDbContext<ApplicationDbContext>(options =>
-                {
-                    options.UseSqlServer(sqlServerConnectionString,
-                        sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
-                            maxRetryCount: 5,
-                            maxRetryDelay: TimeSpan.FromSeconds(10),
-                            errorNumbersToAdd: null));
+                options.UseOpenIddict();
+            });
 
-                    options.UseOpenIddict();
-                });
-            }
+            services.AddScoped<ApplicationDbContext>(sp =>
+                sp.GetRequiredService<ApplicationDbContextPostgres>());
 
             services.AddDatabaseDeveloperPageExceptionFilter();
             services.AddHealthChecks();
 
             return services;
         }
-
-        private static bool IsPostgres(string provider)
-            => provider.Equals("postgres", StringComparison.OrdinalIgnoreCase)
-               || provider.Equals("postgresql", StringComparison.OrdinalIgnoreCase)
-               || provider.Equals("npgsql", StringComparison.OrdinalIgnoreCase);
 
         public static async Task ApplyMigrationsAndSeedDataAsync(this WebApplication app)
         {
