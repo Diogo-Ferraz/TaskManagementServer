@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using TaskManagement.Api.Infrastructure.Persistence.Seeding;
 
 namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
 {
@@ -60,6 +61,11 @@ namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
             catch (Exception ex)
             {
                 logger.LogError(ex, "Migration error in API service");
+            }
+
+            if (app.Environment.IsDevelopment())
+            {
+                await services.SeedDemoDataAsync(logger);
             }
         }
     }

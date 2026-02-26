@@ -55,7 +55,7 @@ namespace TaskManagement.Auth.Infrastructure.Persistence.Configuration
 
             if (app.Environment.IsDevelopment())
             {
-                await services.SeedUsersAsync(logger);
+                await services.SeedDemoUsersAsync(logger);
             }
         }
     }

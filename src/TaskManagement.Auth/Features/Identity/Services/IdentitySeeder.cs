@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using TaskManagement.Auth.Features.Identity.Models;
-using TaskManagement.Auth.Infrastructure.Common.Settings;
 using TaskManagement.Shared.Models;
+using TaskManagement.Shared.DemoData;
 
 namespace TaskManagement.Auth.Features.Identity.Services
 {
@@ -22,34 +22,42 @@ namespace TaskManagement.Auth.Features.Identity.Services
             }
         }
 
-        public static async Task SeedUsersAsync(this IServiceProvider serviceProvider, ILogger logger)
+        public static async Task SeedDemoUsersAsync(this IServiceProvider serviceProvider, ILogger logger)
         {
             var configuration = serviceProvider.GetRequiredService<IConfiguration>();
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            var usersToSeed = configuration.GetSection("SeedUsers").Get<List<SeedUserSettings>>();
+            var demoDataEnabled = configuration.GetValue<bool?>("DemoData:Enabled") ?? true;
+            var defaultPassword = configuration.GetValue<string>("DemoData:DefaultPassword") ?? "Demo123!";
 
-            if (usersToSeed == null || usersToSeed.Count == 0)
+            if (!demoDataEnabled)
+            {
+                logger.LogInformation("Demo data seeding disabled by configuration. Skipping user seeding.");
+                return;
+            }
+
+            if (DemoIdentityBlueprint.Users.Count == 0)
             {
                 logger.LogInformation("No seed users found in configuration. Skipping user seeding.");
                 return;
             }
 
-            foreach (var userSetting in usersToSeed)
+            foreach (var userSetting in DemoIdentityBlueprint.Users)
             {
-                await CreateUserIfNotExistsAsync(userManager, roleManager, userSetting, logger);
+                await CreateUserIfNotExistsAsync(userManager, roleManager, userSetting, defaultPassword, logger);
             }
         }
 
         private static async Task CreateUserIfNotExistsAsync(
             UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
-            SeedUserSettings userSetting,
+            DemoIdentityUser userSetting,
+            string defaultPassword,
             ILogger logger)
         {
             if (string.IsNullOrWhiteSpace(userSetting.Email) ||
-            string.IsNullOrWhiteSpace(userSetting.Password) ||
+            string.IsNullOrWhiteSpace(defaultPassword) ||
             string.IsNullOrWhiteSpace(userSetting.Role))
             {
                 logger.LogWarning($"Skipping invalid seed user entry. Email, Password, and Role must all be provided. Email: '{userSetting.Email ?? "N/A"}'");
@@ -66,6 +74,7 @@ namespace TaskManagement.Auth.Features.Identity.Services
 
                 var user = new ApplicationUser
                 {
+                    Id = userSetting.Id.Trim(),
                     UserName = userSetting.Email,
                     Email = userSetting.Email,
                     EmailConfirmed = true,
@@ -74,7 +83,7 @@ namespace TaskManagement.Auth.Features.Identity.Services
                         : userSetting.DisplayName.Trim()
                 };
 
-                var result = await userManager.CreateAsync(user, userSetting.Password);
+                var result = await userManager.CreateAsync(user, defaultPassword);
 
                 if (result.Succeeded)
                 {

@@ -86,12 +86,35 @@ namespace TaskManagement.Api.Infrastructure.Persistence
                 switch (entry.State)
                 {
                     case EntityState.Added:
-                        entry.Entity.CreatedAt = now;
-                        entry.Entity.CreatedByUserId = currentUserId;
-                        entry.Entity.CreatedByUserName = currentUserName;
-                        entry.Entity.LastModifiedAt = now;
-                        entry.Entity.LastModifiedByUserId = currentUserId;
-                        entry.Entity.LastModifiedByUserName = currentUserName;
+                        if (entry.Entity.CreatedAt == default)
+                        {
+                            entry.Entity.CreatedAt = now;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(entry.Entity.CreatedByUserId))
+                        {
+                            entry.Entity.CreatedByUserId = currentUserId;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(entry.Entity.CreatedByUserName))
+                        {
+                            entry.Entity.CreatedByUserName = currentUserName;
+                        }
+
+                        if (entry.Entity.LastModifiedAt == default)
+                        {
+                            entry.Entity.LastModifiedAt = now;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(entry.Entity.LastModifiedByUserId))
+                        {
+                            entry.Entity.LastModifiedByUserId = currentUserId;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(entry.Entity.LastModifiedByUserName))
+                        {
+                            entry.Entity.LastModifiedByUserName = currentUserName;
+                        }
                         break;
 
                     case EntityState.Modified:

@@ -176,6 +176,20 @@ docker compose up --build
 
 This starts PostgreSQL, Auth, API, and Caddy with local HTTPS routing.
 
+### Trust local Caddy certificate (one-time)
+
+macOS:
+
+```bash
+./scripts/setup-local-trust.sh
+```
+
+Windows (PowerShell as Administrator):
+
+```powershell
+./scripts/setup-local-trust.ps1
+```
+
 ---
 
 ## Testing
