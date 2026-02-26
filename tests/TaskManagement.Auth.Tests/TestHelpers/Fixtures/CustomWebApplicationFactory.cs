@@ -44,10 +44,15 @@ namespace TaskManagement.Auth.Tests.TestHelpers.Fixtures
 
             builder.ConfigureServices(services =>
             {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
+                var descriptorsToRemove = services
+                    .Where(d =>
+                        d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>)
+                        || d.ServiceType == typeof(DbContextOptions<ApplicationDbContextPostgres>)
+                        || d.ServiceType == typeof(ApplicationDbContext)
+                        || d.ServiceType == typeof(ApplicationDbContextPostgres))
+                    .ToList();
 
-                if (descriptor != null)
+                foreach (var descriptor in descriptorsToRemove)
                 {
                     services.Remove(descriptor);
                 }

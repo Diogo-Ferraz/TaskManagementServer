@@ -17,7 +17,7 @@ flowchart LR
     SPA["TaskManagementClient (Angular SPA)"] -->|"HTTPS"| Caddy["Caddy Reverse Proxy"]
     Caddy -->|"HTTPS"| Auth["Auth Service<br/>OpenIddict + Identity"]
     Caddy -->|"HTTPS"| Api["API Service<br/>Projects + TaskItems + Activity"]
-    Auth --> Db[("SQL Server")]
+    Auth --> Db[("PostgreSQL")]
     Api --> Db
 ```
 
@@ -123,7 +123,7 @@ Benefits:
 ## Tech Stack
 
 - ASP.NET Core (.NET 8)
-- EF Core (SQL Server)
+- EF Core (PostgreSQL)
 - MediatR
 - FluentValidation
 - AutoMapper
@@ -148,7 +148,7 @@ Benefits:
 - SignalR real-time activity events
 - Unit and integration tests
 
-### `SQL Server`
+### `PostgreSQL`
 - Shared persistence for Auth and API domains
 
 ### `Caddy`
@@ -174,7 +174,7 @@ You can copy `.env.example` to `.env` and adjust values if needed.
 docker compose up --build
 ```
 
-This starts SQL Server, Auth, API, and Caddy with local HTTPS routing.
+This starts PostgreSQL, Auth, API, and Caddy with local HTTPS routing.
 
 ---
 

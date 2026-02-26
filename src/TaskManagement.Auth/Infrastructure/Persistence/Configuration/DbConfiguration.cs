@@ -7,19 +7,25 @@ namespace TaskManagement.Auth.Infrastructure.Persistence.Configuration
     {
         public static IServiceCollection AddDatabaseConfiguration(this IServiceCollection services, IConfiguration configuration)
         {
-            var connectionString = configuration.GetConnectionString("TaskManagementDbConnection")
-                ?? throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
-
-            services.AddDbContext<ApplicationDbContext>(options =>
+            var connectionString = configuration.GetConnectionString("TaskManagementDbConnection");
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
-                options.UseSqlServer(connectionString,
-                    sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
+                throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
+            }
+
+            services.AddDbContext<ApplicationDbContextPostgres>(options =>
+            {
+                options.UseNpgsql(connectionString,
+                    npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
                         maxRetryCount: 5,
                         maxRetryDelay: TimeSpan.FromSeconds(10),
-                        errorNumbersToAdd: null));
+                        errorCodesToAdd: null));
 
                 options.UseOpenIddict();
             });
+
+            services.AddScoped<ApplicationDbContext>(sp =>
+                sp.GetRequiredService<ApplicationDbContextPostgres>());
 
             services.AddDatabaseDeveloperPageExceptionFilter();
             services.AddHealthChecks();

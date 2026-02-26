@@ -1,18 +1,13 @@
-version: '3.8'
-
 services:
-  sqlserver:
-    environment:
-      - SQL_PASSWORD=${SQL_PASSWORD:-Passw0rd!1234}
-      - MSSQL_SA_PASSWORD=${SQL_PASSWORD:-Passw0rd!1234}
+  postgres:
     ports:
-      - "1433:1433"
+      - "5432:5432"
 
   auth-service:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__TaskManagementDbConnection=Server=sqlserver,1433;Database=TaskManagementDb;User Id=sa;Password=${SQL_PASSWORD:-Passw0rd!1234};TrustServerCertificate=True;
+      - ConnectionStrings__TaskManagementDbConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-taskmanagement};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres};
       - OpenIddict__Issuer=https://auth.localhost
       - OpenIddict__Audience=task_management_api_dev
       - OpenIddict__EncryptionKey=${OPENIDDICT_ENCRYPTION_KEY:-DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=}
@@ -45,7 +40,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__TaskManagementDbConnection=Server=sqlserver,1433;Database=TaskManagementDb;User Id=sa;Password=${SQL_PASSWORD:-Passw0rd!1234};TrustServerCertificate=True;
+      - ConnectionStrings__TaskManagementDbConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-taskmanagement};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres};
       - OpenIddict__Issuer=https://auth.localhost
       - OpenIddict__Audience=task_management_api_dev
       - OpenIddict__EncryptionKey=${OPENIDDICT_ENCRYPTION_KEY:-DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=}

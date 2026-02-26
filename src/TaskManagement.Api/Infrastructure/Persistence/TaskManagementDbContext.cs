@@ -13,7 +13,7 @@ namespace TaskManagement.Api.Infrastructure.Persistence
         private readonly ICurrentUserService? _currentUserService;
 
         public TaskManagementDbContext(
-            DbContextOptions<TaskManagementDbContext> options,
+            DbContextOptions options,
             ICurrentUserService? currentUserService = null)
             : base(options)
         {

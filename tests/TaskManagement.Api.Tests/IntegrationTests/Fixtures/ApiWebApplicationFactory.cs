@@ -38,10 +38,15 @@ namespace TaskManagement.Api.Tests.IntegrationTests.Fixtures
 
             builder.ConfigureServices(services =>
             {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<TaskManagementDbContext>));
+                var descriptorsToRemove = services
+                    .Where(d =>
+                        d.ServiceType == typeof(DbContextOptions<TaskManagementDbContext>)
+                        || d.ServiceType == typeof(DbContextOptions<TaskManagementDbContextPostgres>)
+                        || d.ServiceType == typeof(TaskManagementDbContext)
+                        || d.ServiceType == typeof(TaskManagementDbContextPostgres))
+                    .ToList();
 
-                if (descriptor != null)
+                foreach (var descriptor in descriptorsToRemove)
                 {
                     services.Remove(descriptor);
                 }

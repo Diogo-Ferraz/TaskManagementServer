@@ -13,6 +13,12 @@ using TaskManagement.Api.Infrastructure.Common.Configuration;
 using TaskManagement.Api.Infrastructure.Persistence.Configuration;
 using TaskManagement.Api.Infrastructure.Security.Configuration;
 
+var isEfDesignTime = args.Contains("--ef-design", StringComparer.OrdinalIgnoreCase);
+if (isEfDesignTime)
+{
+    return 0;
+}
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
     .Enrich.FromLogContext()

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
 {
@@ -6,14 +7,23 @@ namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
     {
         public static IServiceCollection AddDatabaseConfiguration(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<TaskManagementDbContext>(options =>
+            var connectionString = configuration.GetConnectionString("TaskManagementDbConnection");
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
-                options.UseSqlServer(configuration.GetConnectionString("TaskManagementDbConnection"),
-                    sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
+                throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
+            }
+
+            services.AddDbContext<TaskManagementDbContextPostgres>(options =>
+            {
+                options.UseNpgsql(connectionString,
+                    npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
                         maxRetryCount: 5,
                         maxRetryDelay: TimeSpan.FromSeconds(10),
-                        errorNumbersToAdd: null));
+                        errorCodesToAdd: null));
             });
+
+            services.AddScoped<TaskManagementDbContext>(sp =>
+                sp.GetRequiredService<TaskManagementDbContextPostgres>());
 
             return services;
         }
