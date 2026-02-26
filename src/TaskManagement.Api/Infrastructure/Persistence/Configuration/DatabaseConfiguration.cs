@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
 {
@@ -6,9 +7,33 @@ namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
     {
         public static IServiceCollection AddDatabaseConfiguration(this IServiceCollection services, IConfiguration configuration)
         {
+            var databaseProvider = configuration["DatabaseProvider"] ?? "SqlServer";
+            var sqlServerConnectionString = configuration.GetConnectionString("TaskManagementDbConnection");
+            var postgresConnectionString = configuration.GetConnectionString("TaskManagementDbConnectionPostgres");
+
             services.AddDbContext<TaskManagementDbContext>(options =>
             {
-                options.UseSqlServer(configuration.GetConnectionString("TaskManagementDbConnection"),
+                if (IsPostgres(databaseProvider))
+                {
+                    if (string.IsNullOrWhiteSpace(postgresConnectionString))
+                    {
+                        throw new InvalidOperationException("Connection string 'TaskManagementDbConnectionPostgres' not found.");
+                    }
+
+                    options.UseNpgsql(postgresConnectionString,
+                        npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5,
+                            maxRetryDelay: TimeSpan.FromSeconds(10),
+                            errorCodesToAdd: null));
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(sqlServerConnectionString))
+                {
+                    throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
+                }
+
+                options.UseSqlServer(sqlServerConnectionString,
                     sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
                         maxRetryCount: 5,
                         maxRetryDelay: TimeSpan.FromSeconds(10),
@@ -17,6 +42,11 @@ namespace TaskManagement.Api.Infrastructure.Persistence.Configuration
 
             return services;
         }
+
+        private static bool IsPostgres(string provider)
+            => provider.Equals("postgres", StringComparison.OrdinalIgnoreCase)
+               || provider.Equals("postgresql", StringComparison.OrdinalIgnoreCase)
+               || provider.Equals("npgsql", StringComparison.OrdinalIgnoreCase);
 
         public static async Task ApplyMigrationsAsync(this WebApplication app)
         {

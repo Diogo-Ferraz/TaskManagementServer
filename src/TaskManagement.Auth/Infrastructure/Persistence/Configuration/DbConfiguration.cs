@@ -7,16 +7,38 @@ namespace TaskManagement.Auth.Infrastructure.Persistence.Configuration
     {
         public static IServiceCollection AddDatabaseConfiguration(this IServiceCollection services, IConfiguration configuration)
         {
-            var connectionString = configuration.GetConnectionString("TaskManagementDbConnection")
-                ?? throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
+            var databaseProvider = configuration["DatabaseProvider"] ?? "SqlServer";
+            var sqlServerConnectionString = configuration.GetConnectionString("TaskManagementDbConnection");
+            var postgresConnectionString = configuration.GetConnectionString("TaskManagementDbConnectionPostgres");
 
             services.AddDbContext<ApplicationDbContext>(options =>
             {
-                options.UseSqlServer(connectionString,
-                    sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(10),
-                        errorNumbersToAdd: null));
+                if (IsPostgres(databaseProvider))
+                {
+                    if (string.IsNullOrWhiteSpace(postgresConnectionString))
+                    {
+                        throw new InvalidOperationException("Connection string 'TaskManagementDbConnectionPostgres' not found.");
+                    }
+
+                    options.UseNpgsql(postgresConnectionString,
+                        npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5,
+                            maxRetryDelay: TimeSpan.FromSeconds(10),
+                            errorCodesToAdd: null));
+                }
+                else
+                {
+                    if (string.IsNullOrWhiteSpace(sqlServerConnectionString))
+                    {
+                        throw new InvalidOperationException("Connection string 'TaskManagementDbConnection' not found.");
+                    }
+
+                    options.UseSqlServer(sqlServerConnectionString,
+                        sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5,
+                            maxRetryDelay: TimeSpan.FromSeconds(10),
+                            errorNumbersToAdd: null));
+                }
 
                 options.UseOpenIddict();
             });
@@ -26,6 +48,11 @@ namespace TaskManagement.Auth.Infrastructure.Persistence.Configuration
 
             return services;
         }
+
+        private static bool IsPostgres(string provider)
+            => provider.Equals("postgres", StringComparison.OrdinalIgnoreCase)
+               || provider.Equals("postgresql", StringComparison.OrdinalIgnoreCase)
+               || provider.Equals("npgsql", StringComparison.OrdinalIgnoreCase);
 
         public static async Task ApplyMigrationsAndSeedDataAsync(this WebApplication app)
         {

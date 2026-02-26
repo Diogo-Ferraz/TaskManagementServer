@@ -10,6 +10,7 @@ services:
 
   auth-service:
     environment:
+      - DatabaseProvider=SqlServer
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__TaskManagementDbConnection=Server=sqlserver,1433;Database=TaskManagementDb;User Id=sa;Password=${SQL_PASSWORD:-Passw0rd!1234};TrustServerCertificate=True;
@@ -43,6 +44,7 @@ services:
     extra_hosts:
       - "auth.localhost:host-gateway"
     environment:
+      - DatabaseProvider=SqlServer
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__TaskManagementDbConnection=Server=sqlserver,1433;Database=TaskManagementDb;User Id=sa;Password=${SQL_PASSWORD:-Passw0rd!1234};TrustServerCertificate=True;
