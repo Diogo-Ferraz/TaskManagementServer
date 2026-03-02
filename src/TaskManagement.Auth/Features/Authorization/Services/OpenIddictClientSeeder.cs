@@ -28,9 +28,11 @@ namespace TaskManagement.Auth.Features.Authorization.Services
 
             foreach (var clientSettings in _clientSettings.Clients)
             {
+                var resolvedClientType = ResolveClientType(clientSettings);
                 var applicationDescriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientSettings.ClientId,
+                    ClientType = resolvedClientType,
                     ConsentType = ConsentTypes.Explicit,
                     DisplayName = clientSettings.DisplayName,
                     Permissions =
@@ -72,10 +74,34 @@ namespace TaskManagement.Auth.Features.Authorization.Services
                     continue;
                 }
 
+                var existingClientType = await manager.GetClientTypeAsync(existingClient, cancellationToken);
+                if (string.IsNullOrWhiteSpace(existingClientType))
+                {
+                    await manager.DeleteAsync(existingClient, cancellationToken);
+                    await manager.CreateAsync(applicationDescriptor, cancellationToken);
+                    continue;
+                }
+
                 await manager.UpdateAsync(existingClient, applicationDescriptor, cancellationToken);
             }
         }
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        private static string ResolveClientType(ClientSettingsOptions clientSettings)
+        {
+            if (string.IsNullOrWhiteSpace(clientSettings.ClientType))
+            {
+                return ClientTypes.Public;
+            }
+
+            return clientSettings.ClientType.Trim().ToLowerInvariant() switch
+            {
+                "public" => ClientTypes.Public,
+                "confidential" => ClientTypes.Confidential,
+                _ => throw new InvalidOperationException(
+                    $"Unsupported OpenIddict client type '{clientSettings.ClientType}' for client '{clientSettings.ClientId}'.")
+            };
+        }
     }
 }

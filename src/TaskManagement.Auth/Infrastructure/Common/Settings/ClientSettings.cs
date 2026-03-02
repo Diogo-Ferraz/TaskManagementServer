@@ -8,6 +8,7 @@
     public class ClientSettingsOptions
     {
         public string ClientId { get; set; } = string.Empty;
+        public string ClientType { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public List<string> RedirectUris { get; set; } = [];
         public List<string> PostLogoutRedirectUris { get; set; } = [];
