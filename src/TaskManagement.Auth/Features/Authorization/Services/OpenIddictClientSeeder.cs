@@ -29,10 +29,12 @@ namespace TaskManagement.Auth.Features.Authorization.Services
             foreach (var clientSettings in _clientSettings.Clients)
             {
                 var resolvedClientType = ResolveClientType(clientSettings);
+                var resolvedClientSecret = ResolveClientSecret(clientSettings, resolvedClientType);
                 var applicationDescriptor = new OpenIddictApplicationDescriptor
                 {
                     ClientId = clientSettings.ClientId,
                     ClientType = resolvedClientType,
+                    ClientSecret = resolvedClientSecret,
                     ConsentType = ConsentTypes.Explicit,
                     DisplayName = clientSettings.DisplayName,
                     Permissions =
@@ -102,6 +104,22 @@ namespace TaskManagement.Auth.Features.Authorization.Services
                 _ => throw new InvalidOperationException(
                     $"Unsupported OpenIddict client type '{clientSettings.ClientType}' for client '{clientSettings.ClientId}'.")
             };
+        }
+
+        private static string? ResolveClientSecret(ClientSettingsOptions clientSettings, string resolvedClientType)
+        {
+            if (resolvedClientType == ClientTypes.Public)
+            {
+                return null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(clientSettings.ClientSecret))
+            {
+                return clientSettings.ClientSecret;
+            }
+
+            throw new InvalidOperationException(
+                $"Client '{clientSettings.ClientId}' is configured as confidential but has no client secret.");
         }
     }
 }
